@@ -273,13 +273,15 @@ export default function App() {
         
         if (pastMeetings.length > 0) {
           setSelectedMeeting(pastMeetings[pastMeetings.length - 1]);
+          setError(null);
         } else if (sorted.length > 0) {
           setSelectedMeeting(sorted[0]);
+          setError(null);
         } else {
           setSelectedMeeting(null);
+          setError(`Für ${year} liegen keine Daten vor. Möchtest du die Daten von 2023 oder 2026 sehen?`);
           setIsInitialLoad(false);
         }
-        setError(null);
       } catch (err) {
         setError(
           err instanceof Error && err.message.includes('Live F1 session in progress')

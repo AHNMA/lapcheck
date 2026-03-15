@@ -4,6 +4,7 @@
  */
 
 const BASE_URL = 'http://178.104.33.41:8000';
+export const DEFAULT_LIMIT = 500;
 
 async function fetchData(url: string): Promise<Response> {
   return fetch(url);
@@ -254,7 +255,7 @@ export const f1Service = {
   // --- Raw OpenF1 API Endpoints ---
 
   async fetchCarData(params: Record<string, string | number | boolean>): Promise<CarData[]> {
-    const res = await fetchData(buildUrl('/car_data', params));
+    const res = await fetchData(buildUrl('/car_data', { limit: DEFAULT_LIMIT, ...params }));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
@@ -289,14 +290,14 @@ export const f1Service = {
   },
 
   async fetchLaps(params: Record<string, string | number | boolean>): Promise<Lap[]> {
-    const res = await fetchData(buildUrl('/laps', params));
+    const res = await fetchData(buildUrl('/laps', { limit: DEFAULT_LIMIT, ...params }));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchLocation(params: Record<string, string | number | boolean>): Promise<LocationData[]> {
-    const res = await fetchData(buildUrl('/location', params));
+    const res = await fetchData(buildUrl('/location', { limit: DEFAULT_LIMIT, ...params }));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
