@@ -34,6 +34,8 @@ jobs:
           server: www584.your-server.de
           username: kjkqpy_1
           password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          security: loose
           local-dir: ./dist/
           server-dir: /public_html/lapcheck/
           exclude: |
