@@ -218,21 +218,21 @@ function TelemetryChart({ data, metric, drivers, selectedDrivers, height = 200, 
             }}
           />
           {selectedDrivers.map((num, idx) => {
-            const d = drivers.find(drv => drv.driver_number === num);
+            const d = drivers.find(drv => drv.DriverNumber === num);
             if (!d) return null;
             const isDashed = selectedDrivers.slice(0, idx).some(prevNum => {
-              const prevD = drivers.find(drv => drv.driver_number === prevNum);
-              return prevD && d && prevD.team_name === d.team_name;
+              const prevD = drivers.find(drv => drv.DriverNumber === prevNum);
+              return prevD && d && prevD.TeamName === d.TeamName;
             });
             // Assign some default colors if team_colour is missing from the new API
             const defaultColors = ['#FF1E1E', '#1E90FF', '#32CD32', '#FFA500', '#9370DB', '#00CED1'];
-            const color = (d as any).team_colour ? `#${(d as any).team_colour}` : defaultColors[idx % defaultColors.length];
+            const color = d.team_colour ? `#${d.team_colour}` : defaultColors[idx % defaultColors.length];
             return (
               <Line
                 key={`${num}-${metric}`}
                 type={metric === 'gear' ? 'step' : 'monotone'}
-                dataKey={`${d.abbreviation}_${metric}`}
-                name={`${d.abbreviation}_${num}_${metric}`}
+                dataKey={`${d.Abbreviation}_${metric}`}
+                name={`${d.Abbreviation}_${num}_${metric}`}
                 stroke={color}
                 strokeWidth={2}
                 strokeDasharray={isDashed ? "5 5" : undefined}
@@ -345,14 +345,26 @@ export default function App() {
     const loadDrivers = async () => {
       try {
         setLoading(true);
-        const data = await f1Service.getDrivers(year, selectedMeeting.meeting_name, selectedSession.session_name);
-        setDrivers(data);
+        const [driversData, teamsData] = await Promise.all([
+          f1Service.getDrivers(year, selectedMeeting.meeting_name, selectedSession.session_name),
+          f1Service.getTeams(year, selectedMeeting.meeting_name, selectedSession.session_name)
+        ]);
+
+        const mergedDrivers = driversData.map(d => {
+          const team = teamsData.find(t => t.TeamName === d.TeamName);
+          return {
+            ...d,
+            team_colour: team?.TeamColor
+          };
+        });
+
+        setDrivers(mergedDrivers);
         
         // Always pick top 2 drivers when session changes to trigger auto-plot
-        if (data.length >= 2) {
-          setSelectedDrivers([data[0].driver_number, data[1].driver_number]);
-        } else if (data.length > 0) {
-          setSelectedDrivers([data[0].driver_number]);
+        if (mergedDrivers.length >= 2) {
+          setSelectedDrivers([mergedDrivers[0].DriverNumber, mergedDrivers[1].DriverNumber]);
+        } else if (mergedDrivers.length > 0) {
+          setSelectedDrivers([mergedDrivers[0].DriverNumber]);
         } else {
           setSelectedDrivers([]);
           setIsInitialLoad(false);
@@ -388,9 +400,9 @@ export default function App() {
         setLoading(true);
         const lapResults = await Promise.all(
           newLapsToFetch.map(async (num) => {
-          const d = drivers.find(drv => drv.driver_number === num);
+          const d = drivers.find(drv => drv.DriverNumber === num);
           if (!d) return { num, laps: [] };
-          const laps = await f1Service.getAllLaps(year, selectedMeeting?.meeting_name || '', selectedSession.session_name, d.abbreviation);
+          const laps = await f1Service.getAllLaps(year, selectedMeeting?.meeting_name || '', selectedSession.session_name, d.Abbreviation);
             return { num, laps };
           })
         );
@@ -401,8 +413,8 @@ export default function App() {
         lapResults.forEach(({ num, laps }) => {
           updatedAvailable[num] = laps;
           if (laps.length > 0) {
-          // Default to the lap with a valid lap_time, avoiding 'None' if possible
-          const validLaps = laps.filter(l => l.lap_time && l.lap_time !== 'None');
+          // Default to the lap with a valid LapTime, avoiding 'None' if possible
+          const validLaps = laps.filter(l => l.LapTime && l.LapTime !== 'None');
           if (validLaps.length > 0) {
             updatedSelected[num] = validLaps[validLaps.length - 1]; // or you can implement logic to find the fastest time string
           } else {
@@ -466,8 +478,8 @@ export default function App() {
               year,
               selectedMeeting?.meeting_name || '',
               selectedSession.session_name,
-              driver.abbreviation,
-              lap.lap_number
+              driver.Abbreviation,
+              lap.LapNumber
             );
 
             if (isCancelled) return;
@@ -523,11 +535,11 @@ export default function App() {
                 const val1 = p1[metric as keyof TelemetryPoint] as number;
                 const val2 = p2[metric as keyof TelemetryPoint] as number;
                 const interpolated = val1 + (val2 - val1) * ratio;
-                mergedPoint[`${res.driver.abbreviation}_${metric}`] = interpolated;
+                mergedPoint[`${res.driver.Abbreviation}_${metric}`] = interpolated;
               });
               
               // Also store the acronym for the legend/tooltips if needed
-              mergedPoint[res.driver.abbreviation] = true;
+              mergedPoint[res.driver.Abbreviation] = true;
             });
             
             if (Object.keys(mergedPoint).length > 1) {
@@ -586,7 +598,7 @@ export default function App() {
       });
       
       const driverNames = selectedDrivers
-        .map(num => drivers.find(d => d.driver_number === num)?.abbreviation)
+        .map(num => drivers.find(d => d.DriverNumber === num)?.Abbreviation)
         .filter(Boolean)
         .join('-');
       
@@ -731,26 +743,26 @@ export default function App() {
                       <div className="grid grid-cols-2 gap-1.5 auto-rows-fr">
                         {drivers.map((d) => (
                           <button
-                            key={d.driver_number}
-                            onClick={() => handleDriverToggle(d.driver_number)}
+                            key={d.DriverNumber}
+                            onClick={() => handleDriverToggle(d.DriverNumber)}
                             className={cn(
                               "text-left px-2 py-1.5 text-[10px] transition-all flex flex-col justify-center gap-0.5 border relative overflow-hidden group rounded-sm",
-                              selectedDrivers.includes(d.driver_number)
+                              selectedDrivers.includes(d.DriverNumber)
                                 ? "bg-f1-red text-white border-f1-red"
                                 : "bg-dark-bg border-dark-border hover:border-f1-red/50"
                             )}
                           >
                             <div 
                               className="absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5" 
-                              style={{ backgroundColor: `#${(d as any).team_colour || '888'}` }}
+                              style={{ backgroundColor: `#${d.team_colour || '888'}` }}
                             />
                             <div className="pl-1.5 flex justify-between items-start w-full">
-                              <span className="font-mono font-bold text-xs">{d.driver_number}</span>
-                              <span className={cn("font-mono text-[8px] px-1 rounded", selectedDrivers.includes(d.driver_number) ? "bg-white/20" : "bg-dark-surface")}>
-                                {d.abbreviation}
+                              <span className="font-mono font-bold text-xs">{d.DriverNumber}</span>
+                              <span className={cn("font-mono text-[8px] px-1 rounded", selectedDrivers.includes(d.DriverNumber) ? "bg-white/20" : "bg-dark-surface")}>
+                                {d.Abbreviation}
                               </span>
                             </div>
-                            <span className="pl-1.5 truncate font-bold uppercase tracking-tight text-[9px]">{d.broadcast_name.split(' ').pop()}</span>
+                            <span className="pl-1.5 truncate font-bold uppercase tracking-tight text-[9px]">{d.FullName ? d.FullName.split(' ').pop() : d.BroadcastName}</span>
                           </button>
                         ))}
                       </div>
@@ -772,20 +784,20 @@ export default function App() {
                     </div>
                     <div className="space-y-2">
                       {selectedDrivers.map(num => {
-                        const d = drivers.find(drv => drv.driver_number === num);
+                        const d = drivers.find(drv => drv.DriverNumber === num);
                         const laps = availableLaps[num] || [];
                         if (laps.length === 0) return null;
 
                         return (
                           <div key={`sidebar-lap-${num}`} className="bg-dark-bg border border-dark-border p-2 rounded-sm">
                             <CustomDropdown
-                              label={`LAP FOR ${d?.abbreviation}`}
+                              label={`LAP FOR ${d?.Abbreviation}`}
                               icon={<Timer className="w-3 h-3 text-f1-red" />}
                               options={laps}
                               value={selectedLaps[num] || null}
                               onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))}
-                              getLabel={(l) => `Lap ${l.lap_number} (${formatLapTime(l.lap_time)}) [${l.compound}]`}
-                              getKey={(l) => l.lap_number}
+                              getLabel={(l) => `Lap ${l.LapNumber} (${formatLapTime(l.LapTime)}) [${l.Compound}]`}
+                              getKey={(l) => l.LapNumber}
                               maxItems={5}
                             />
                           </div>
@@ -861,11 +873,11 @@ export default function App() {
                 <div className="flex items-stretch gap-3">
                   <div className="flex gap-2">
                     {selectedDrivers.map((num, idx) => {
-                      const d = drivers.find(drv => drv.driver_number === num);
+                      const d = drivers.find(drv => drv.DriverNumber === num);
                       const lap = selectedLaps[num];
                       const isDashed = selectedDrivers.slice(0, idx).some(prevNum => {
-                        const prevD = drivers.find(drv => drv.driver_number === prevNum);
-                        return prevD && d && prevD.team_name === d.team_name;
+                        const prevD = drivers.find(drv => drv.DriverNumber === prevNum);
+                        return prevD && d && prevD.TeamName === d.TeamName;
                       });
                       return (
                         <div key={`driver-status-${num}`} className="flex items-stretch gap-3 bg-dark-surface/50 border border-dark-border p-2.5 rounded-sm min-w-[110px]">
@@ -873,19 +885,19 @@ export default function App() {
                             className="w-1 rounded-full" 
                             style={{ 
                               background: isDashed 
-                                ? `repeating-linear-gradient(to bottom, #${(d as any)?.team_colour || '888'}, #${(d as any)?.team_colour || '888'} 4px, transparent 4px, transparent 8px)`
-                                : `#${(d as any)?.team_colour || '888'}`
+                                ? `repeating-linear-gradient(to bottom, #${d?.team_colour || '888'}, #${d?.team_colour || '888'} 4px, transparent 4px, transparent 8px)`
+                                : `#${d?.team_colour || '888'}`
                             }} 
                           />
                           <div className="flex flex-col justify-between">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-black text-lg tracking-tighter leading-none">{d?.abbreviation}</span>
+                              <span className="font-black text-lg tracking-tighter leading-none">{d?.Abbreviation}</span>
                               {isDashed && <span className="text-[8px] font-mono opacity-50 border border-white/20 px-1 rounded-sm">DASHED</span>}
                             </div>
                             {lap && (
                               <div className="flex flex-col mt-1">
-                                <span className="text-[8px] font-mono opacity-40 uppercase tracking-tighter">Lap {lap.lap_number} ({lap.compound})</span>
-                                <span className="text-[11px] font-mono text-f1-red font-bold leading-none">{formatLapTime(lap.lap_time)}</span>
+                                <span className="text-[8px] font-mono opacity-40 uppercase tracking-tighter">Lap {lap.LapNumber} ({lap.Compound})</span>
+                                <span className="text-[11px] font-mono text-f1-red font-bold leading-none">{formatLapTime(lap.LapTime)}</span>
                               </div>
                             )}
                           </div>
@@ -1055,11 +1067,11 @@ export default function App() {
             
             <div className="flex gap-8">
               {selectedDrivers.map((num, idx) => {
-                const d = drivers.find(drv => drv.driver_number === num);
+                const d = drivers.find(drv => drv.DriverNumber === num);
                 const lap = selectedLaps[num];
                 const isDashed = selectedDrivers.slice(0, idx).some(prevNum => {
-                  const prevD = drivers.find(drv => drv.driver_number === prevNum);
-                  return prevD && d && prevD.team_name === d.team_name;
+                  const prevD = drivers.find(drv => drv.DriverNumber === prevNum);
+                  return prevD && d && prevD.TeamName === d.TeamName;
                 });
                 return (
                   <div key={`export-driver-${num}`} className="flex flex-col items-end gap-2">
@@ -1068,19 +1080,19 @@ export default function App() {
                         className="w-2 h-8" 
                         style={{ 
                           background: isDashed 
-                            ? `repeating-linear-gradient(to bottom, #${(d as any)?.team_colour || '888'}, #${(d as any)?.team_colour || '888'} 6px, transparent 6px, transparent 12px)`
-                            : `#${(d as any)?.team_colour || '888'}`
+                            ? `repeating-linear-gradient(to bottom, #${d?.team_colour || '888'}, #${d?.team_colour || '888'} 6px, transparent 6px, transparent 12px)`
+                            : `#${d?.team_colour || '888'}`
                         }} 
                       />
                       <div className="flex items-center gap-3">
-                        <span className="font-mono font-bold text-3xl">{d?.abbreviation}</span>
+                        <span className="font-mono font-bold text-3xl">{d?.Abbreviation}</span>
                         {isDashed && <span className="text-xs font-mono opacity-50 border border-white/20 px-2 py-0.5 rounded-sm">DASHED</span>}
                       </div>
                     </div>
                     {lap && (
                       <div className="flex flex-col items-end">
-                        <span className="text-sm font-mono opacity-40 uppercase tracking-widest">Lap {lap.lap_number} ({lap.compound})</span>
-                        <span className="text-2xl font-mono text-f1-red font-bold">{formatLapTime(lap.lap_time)}</span>
+                        <span className="text-sm font-mono opacity-40 uppercase tracking-widest">Lap {lap.LapNumber} ({lap.Compound})</span>
+                        <span className="text-2xl font-mono text-f1-red font-bold">{formatLapTime(lap.LapTime)}</span>
                       </div>
                     )}
                   </div>
@@ -1113,21 +1125,21 @@ export default function App() {
                   labelStyle={{ color: '#666', marginBottom: '4px' }}
                 />
                 {selectedDrivers.map((num, idx) => {
-                  const d = drivers.find(drv => drv.driver_number === num);
+                  const d = drivers.find(drv => drv.DriverNumber === num);
                   if (!d) return null;
                   const isDashed = selectedDrivers.slice(0, idx).some(prevNum => {
-                    const prevD = drivers.find(drv => drv.driver_number === prevNum);
-                    return prevD && d && prevD.team_name === d.team_name;
+                    const prevD = drivers.find(drv => drv.DriverNumber === prevNum);
+                    return prevD && d && prevD.TeamName === d.TeamName;
                   });
                   // Assign some default colors if team_colour is missing from the new API
                   const defaultColors = ['#FF1E1E', '#1E90FF', '#32CD32', '#FFA500', '#9370DB', '#00CED1'];
-                  const color = (d as any).team_colour ? `#${(d as any).team_colour}` : defaultColors[idx % defaultColors.length];
+                  const color = d.team_colour ? `#${d.team_colour}` : defaultColors[idx % defaultColors.length];
                   return (
                     <Line
                       key={`export-line-${num}`}
                       type="monotone"
-                      dataKey={`${d.abbreviation}_speed`}
-                      name={`${d.abbreviation}_${num}_speed`}
+                      dataKey={`${d.Abbreviation}_speed`}
+                      name={`${d.Abbreviation}_${num}_speed`}
                       stroke={color}
                       strokeWidth={4}
                       strokeDasharray={isDashed ? "5 5" : undefined}
