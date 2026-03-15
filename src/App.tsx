@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { f1Service, Meeting, Session, Driver, TelemetryPoint, Lap } from './services/f1Service';
+import { mapSessionName } from './services/sessionMapper';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -49,11 +50,21 @@ const METRIC_LABELS: Record<string, string> = {
   gear: 'Gear'
 };
 
-const formatLapTime = (seconds: number | undefined | null) => {
-  if (!seconds) return '-:--.---';
-  const mins = Math.floor(seconds / 60);
-  const secs = (seconds % 60).toFixed(3);
-  return `${mins}:${secs.padStart(6, '0')}`;
+const formatLapTime = (lapTime: string | null | undefined) => {
+  if (!lapTime || lapTime === 'None') return '-:--.---';
+
+  // Try to parse "0 days 00:01:20.294000" format
+  const match = lapTime.match(/(?:(\d+) days? )?(\d+):(\d+):([\d.]+)/);
+  if (match) {
+    const [, , hours, minutes, secondsStr] = match;
+    const minutesNum = parseInt(minutes, 10);
+    const secondsNum = parseFloat(secondsStr);
+    const totalMinutes = (parseInt(hours || '0', 10) * 60) + minutesNum;
+    return `${totalMinutes}:${secondsNum.toFixed(3).padStart(6, '0')}`;
+  }
+
+  // Fallback to returning original string
+  return lapTime;
 };
 
 // Custom Dropdown Component
@@ -389,7 +400,10 @@ export default function App() {
         setLoading(true);
         const lapResults = await Promise.all(
           newLapsToFetch.map(async (num) => {
-            const laps = await f1Service.getAllLaps(selectedSession.session_key, num);
+          const d = drivers.find(drv => drv.driver_number === num);
+          if (!d) return { num, laps: [] };
+          const mappedSession = mapSessionName(selectedSession.session_name);
+          const laps = await f1Service.getAllLaps(year, selectedMeeting?.meeting_name || '', mappedSession, d.name_acronym);
             return { num, laps };
           })
         );
@@ -400,11 +414,13 @@ export default function App() {
         lapResults.forEach(({ num, laps }) => {
           updatedAvailable[num] = laps;
           if (laps.length > 0) {
-            // Default to fastest lap
-            const fastest = laps.reduce((prev, curr) => 
-              (prev.lap_duration || Infinity) < (curr.lap_duration || Infinity) ? prev : curr
-            );
-            updatedSelected[num] = fastest;
+          // Default to the lap with a valid lap_time, avoiding 'None' if possible
+          const validLaps = laps.filter(l => l.lap_time && l.lap_time !== 'None');
+          if (validLaps.length > 0) {
+            updatedSelected[num] = validLaps[validLaps.length - 1]; // or you can implement logic to find the fastest time string
+          } else {
+            updatedSelected[num] = laps[0];
+          }
           } else {
             updatedSelected[num] = null;
           }
@@ -459,7 +475,15 @@ export default function App() {
               continue;
             }
             
-            const telemetry = await f1Service.getTelemetry(selectedSession.session_key, driverNum, lap);
+            const mappedSession = mapSessionName(selectedSession.session_name);
+            const telemetry = await f1Service.getTelemetry(
+              year,
+              selectedMeeting?.meeting_name || '',
+              mappedSession,
+              driver.name_acronym,
+              lap.lap_number
+            );
+
             if (isCancelled) return;
             results.push({ driver, telemetry });
             
@@ -774,7 +798,7 @@ export default function App() {
                               options={laps}
                               value={selectedLaps[num] || null}
                               onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))}
-                              getLabel={(l) => `Lap ${l.lap_number} (${formatLapTime(l.lap_duration)})`}
+                              getLabel={(l) => `Lap ${l.lap_number} (${formatLapTime(l.lap_time)}) [${l.compound}]`}
                               getKey={(l) => l.lap_number}
                               maxItems={5}
                             />
@@ -874,8 +898,8 @@ export default function App() {
                             </div>
                             {lap && (
                               <div className="flex flex-col mt-1">
-                                <span className="text-[8px] font-mono opacity-40 uppercase tracking-tighter">Lap {lap.lap_number}</span>
-                                <span className="text-[11px] font-mono text-f1-red font-bold leading-none">{formatLapTime(lap.lap_duration)}</span>
+                                <span className="text-[8px] font-mono opacity-40 uppercase tracking-tighter">Lap {lap.lap_number} ({lap.compound})</span>
+                                <span className="text-[11px] font-mono text-f1-red font-bold leading-none">{formatLapTime(lap.lap_time)}</span>
                               </div>
                             )}
                           </div>
@@ -1069,8 +1093,8 @@ export default function App() {
                     </div>
                     {lap && (
                       <div className="flex flex-col items-end">
-                        <span className="text-sm font-mono opacity-40 uppercase tracking-widest">Lap {lap.lap_number}</span>
-                        <span className="text-2xl font-mono text-f1-red font-bold">{formatLapTime(lap.lap_duration)}</span>
+                        <span className="text-sm font-mono opacity-40 uppercase tracking-widest">Lap {lap.lap_number} ({lap.compound})</span>
+                        <span className="text-2xl font-mono text-f1-red font-bold">{formatLapTime(lap.lap_time)}</span>
                       </div>
                     )}
                   </div>
