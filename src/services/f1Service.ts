@@ -10,7 +10,80 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
 
-async function fetchWithRetry(url: string, retries = 3, delay = 500): Promise<Response> {
+class RateLimiter {
+  private requestQueue: (() => Promise<void>)[] = [];
+  private processing = false;
+  private requestsInLastSecond: number[] = [];
+  private requestsInLastMinute: number[] = [];
+
+  private readonly MAX_RPS = 3;
+  private readonly MAX_RPM = 30;
+
+  private cleanOldTimestamps(now: number) {
+    this.requestsInLastSecond = this.requestsInLastSecond.filter(t => now - t < 1000);
+    this.requestsInLastMinute = this.requestsInLastMinute.filter(t => now - t < 60000);
+  }
+
+  private getNextAvailableTime(): number {
+    const now = Date.now();
+    this.cleanOldTimestamps(now);
+
+    let waitTime = 0;
+
+    if (this.requestsInLastMinute.length >= this.MAX_RPM) {
+      const oldestInMinute = this.requestsInLastMinute[0];
+      waitTime = Math.max(waitTime, oldestInMinute + 60000 - now);
+    }
+
+    if (this.requestsInLastSecond.length >= this.MAX_RPS) {
+      const oldestInSecond = this.requestsInLastSecond[0];
+      waitTime = Math.max(waitTime, oldestInSecond + 1000 - now);
+    }
+
+    return waitTime;
+  }
+
+  private async processQueue() {
+    if (this.processing || this.requestQueue.length === 0) return;
+    this.processing = true;
+
+    while (this.requestQueue.length > 0) {
+      const waitTime = this.getNextAvailableTime();
+      if (waitTime > 0) {
+        await sleep(waitTime);
+      }
+
+      const task = this.requestQueue.shift();
+      if (task) {
+        const now = Date.now();
+        this.requestsInLastSecond.push(now);
+        this.requestsInLastMinute.push(now);
+        // Execute task asynchronously so queue isn't blocked by the response processing time
+        task();
+      }
+    }
+
+    this.processing = false;
+  }
+
+  public schedule<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.requestQueue.push(async () => {
+        try {
+          const result = await fn();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      this.processQueue();
+    });
+  }
+}
+
+const apiLimiter = new RateLimiter();
+
+async function fetchWithRetry(url: string, retries = 3, delay = 1000): Promise<Response> {
   const cacheKey = url;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -21,8 +94,14 @@ async function fetchWithRetry(url: string, retries = 3, delay = 500): Promise<Re
 
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await fetch(url);
-      if (response.status === 429 || response.status >= 500) {
+      const response = await apiLimiter.schedule(() => fetch(url));
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After');
+        const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : delay * Math.pow(2, i);
+        await sleep(waitTime);
+        continue;
+      }
+      if (response.status >= 500) {
         await sleep(delay * (i + 1));
         continue;
       }
@@ -36,19 +115,19 @@ async function fetchWithRetry(url: string, retries = 3, delay = 500): Promise<Re
       await sleep(delay * (i + 1));
     }
   }
-  return fetch(url);
+  return apiLimiter.schedule(() => fetch(url));
 }
 
 function buildUrl(endpoint: string, params: Record<string, string | number | boolean | undefined>): string {
-  const url = new URL(`${BASE_URL}${endpoint}`);
+  let queryString = '';
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined) {
       // Allow for OpenF1 API's custom filter syntax (e.g. `speed>=315`) by not encoding the key
       // The params object keys can be things like "speed>=" or "date<"
-      url.search += `${url.search ? '&' : '?'}${key}=${encodeURIComponent(value.toString())}`;
+      queryString += `${queryString ? '&' : '?'}${key}=${encodeURIComponent(value.toString())}`;
     }
   }
-  return url.toString().replace(/\?$/, '');
+  return `${BASE_URL}${endpoint}${queryString}`;
 }
 
 export interface CarData {

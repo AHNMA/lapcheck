@@ -163,8 +163,8 @@ interface TelemetryChartProps {
 
 function TelemetryChart({ data, metric, drivers, selectedDrivers, height = 200, showXAxis = false }: TelemetryChartProps) {
   return (
-    <div className="w-full flex-1" style={{ height: typeof height === 'number' ? `${height}px` : height }}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="w-full flex-1" style={{ height: typeof height === 'number' ? `${height}px` : height, minHeight: 0, minWidth: 0, position: 'relative' }}>
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
         <LineChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: showXAxis ? 30 : 10 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1A1B1E" vertical={false} />
           <XAxis 
@@ -1078,8 +1078,8 @@ export default function App() {
           </div>
 
           {/* Plot Area */}
-          <div className="flex-1 border border-dark-border bg-dark-surface/30 rounded-xl relative overflow-hidden p-8">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="flex-1 border border-dark-border bg-dark-surface/30 rounded-xl relative overflow-hidden p-8" style={{ minHeight: 0, minWidth: 0, position: 'relative' }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <LineChart data={telemetryData} margin={{ top: 20, right: 40, left: 20, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
                 <XAxis 
