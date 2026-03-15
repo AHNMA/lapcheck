@@ -40,15 +40,18 @@ async function fetchWithRetry(url: string, retries = 3, delay = 500): Promise<Re
 }
 
 function buildUrl(endpoint: string, params: Record<string, string | number | boolean | undefined>): string {
-  const url = new URL(`${BASE_URL}${endpoint}`);
+  const queryParts: string[] = [];
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined) {
       // Allow for OpenF1 API's custom filter syntax (e.g. `speed>=315`) by not encoding the key
-      // The params object keys can be things like "speed>=" or "date<"
-      url.search += `${url.search ? '&' : '?'}${key}=${encodeURIComponent(value.toString())}`;
+      // The params object keys can be things like "speed>=" or "date<="
+      // If the key already ends in '=', '>', '<', or '!', don't add another '='.
+      const sep = /[=<>!]$/.test(key) ? '' : '=';
+      queryParts.push(`${key}${sep}${encodeURIComponent(value.toString())}`);
     }
   }
-  return url.toString().replace(/\?$/, '');
+  const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+  return `${BASE_URL}${endpoint}${queryString}`;
 }
 
 export interface CarData {
