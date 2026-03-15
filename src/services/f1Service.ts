@@ -1,121 +1,12 @@
 /**
  * OpenF1 API Service
- * https://api.openf1.org/
+ * Self-hosted instance
  */
 
-const BASE_URL = 'https://api.openf1.org/v1';
+const BASE_URL = 'http://178.104.33.41:8000';
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
-
-class RateLimiter {
-  private requestQueue: (() => Promise<void>)[] = [];
-  private processing = false;
-  private requestsInLastSecond: number[] = [];
-  private requestsInLastMinute: number[] = [];
-
-  private readonly MAX_RPS = 3;
-  private readonly MAX_RPM = 30;
-
-  private cleanOldTimestamps(now: number) {
-    this.requestsInLastSecond = this.requestsInLastSecond.filter(t => now - t < 1000);
-    this.requestsInLastMinute = this.requestsInLastMinute.filter(t => now - t < 60000);
-  }
-
-  private getNextAvailableTime(): number {
-    const now = Date.now();
-    this.cleanOldTimestamps(now);
-
-    let waitTime = 0;
-
-    if (this.requestsInLastMinute.length >= this.MAX_RPM) {
-      const oldestInMinute = this.requestsInLastMinute[0];
-      waitTime = Math.max(waitTime, oldestInMinute + 60000 - now);
-    }
-
-    if (this.requestsInLastSecond.length >= this.MAX_RPS) {
-      const oldestInSecond = this.requestsInLastSecond[0];
-      waitTime = Math.max(waitTime, oldestInSecond + 1000 - now);
-    }
-
-    return waitTime;
-  }
-
-  private async processQueue() {
-    if (this.processing || this.requestQueue.length === 0) return;
-    this.processing = true;
-
-    while (this.requestQueue.length > 0) {
-      const waitTime = this.getNextAvailableTime();
-      if (waitTime > 0) {
-        await sleep(waitTime);
-      }
-
-      const task = this.requestQueue.shift();
-      if (task) {
-        const now = Date.now();
-        this.requestsInLastSecond.push(now);
-        this.requestsInLastMinute.push(now);
-        // Execute task asynchronously so queue isn't blocked by the response processing time
-        task();
-      }
-    }
-
-    this.processing = false;
-  }
-
-  public schedule<T>(fn: () => Promise<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      this.requestQueue.push(async () => {
-        try {
-          const result = await fn();
-          resolve(result);
-        } catch (error) {
-          reject(error);
-        }
-      });
-      this.processQueue();
-    });
-  }
-}
-
-const apiLimiter = new RateLimiter();
-
-async function fetchWithRetry(url: string, retries = 3, delay = 1000): Promise<Response> {
-  const cacheKey = url;
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return new Response(JSON.stringify(cached.data), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await apiLimiter.schedule(() => fetch(url));
-      if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After');
-        const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : delay * Math.pow(2, i);
-        await sleep(waitTime);
-        continue;
-      }
-      if (response.status >= 500) {
-        await sleep(delay * (i + 1));
-        continue;
-      }
-      if (response.ok) {
-        const data = await response.clone().json();
-        cache.set(cacheKey, { data, timestamp: Date.now() });
-      }
-      return response;
-    } catch (error) {
-      if (i === retries - 1) throw error;
-      await sleep(delay * (i + 1));
-    }
-  }
-  return apiLimiter.schedule(() => fetch(url));
+async function fetchData(url: string): Promise<Response> {
+  return fetch(url);
 }
 
 function buildUrl(endpoint: string, params: Record<string, string | number | boolean | undefined>): string {
@@ -127,7 +18,7 @@ function buildUrl(endpoint: string, params: Record<string, string | number | boo
       queryString += `${queryString ? '&' : '?'}${key}=${encodeURIComponent(value.toString())}`;
     }
   }
-  return `${BASE_URL}${endpoint}${queryString}`;
+  return `${BASE_URL}/v1${endpoint}${queryString}`;
 }
 
 export interface CarData {
@@ -363,126 +254,126 @@ export const f1Service = {
   // --- Raw OpenF1 API Endpoints ---
 
   async fetchCarData(params: Record<string, string | number | boolean>): Promise<CarData[]> {
-    const res = await fetchWithRetry(buildUrl('/car_data', params));
+    const res = await fetchData(buildUrl('/car_data', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchChampionshipDrivers(params: Record<string, string | number | boolean>): Promise<ChampionshipDriver[]> {
-    const res = await fetchWithRetry(buildUrl('/championship_drivers', params));
+    const res = await fetchData(buildUrl('/championship_drivers', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchChampionshipTeams(params: Record<string, string | number | boolean>): Promise<ChampionshipTeam[]> {
-    const res = await fetchWithRetry(buildUrl('/championship_teams', params));
+    const res = await fetchData(buildUrl('/championship_teams', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchDrivers(params: Record<string, string | number | boolean>): Promise<Driver[]> {
-    const res = await fetchWithRetry(buildUrl('/drivers', params));
+    const res = await fetchData(buildUrl('/drivers', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchIntervals(params: Record<string, string | number | boolean>): Promise<Interval[]> {
-    const res = await fetchWithRetry(buildUrl('/intervals', params));
+    const res = await fetchData(buildUrl('/intervals', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchLaps(params: Record<string, string | number | boolean>): Promise<Lap[]> {
-    const res = await fetchWithRetry(buildUrl('/laps', params));
+    const res = await fetchData(buildUrl('/laps', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchLocation(params: Record<string, string | number | boolean>): Promise<LocationData[]> {
-    const res = await fetchWithRetry(buildUrl('/location', params));
+    const res = await fetchData(buildUrl('/location', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchMeetings(params: Record<string, string | number | boolean>): Promise<Meeting[]> {
-    const res = await fetchWithRetry(buildUrl('/meetings', params));
+    const res = await fetchData(buildUrl('/meetings', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchOvertakes(params: Record<string, string | number | boolean>): Promise<Overtake[]> {
-    const res = await fetchWithRetry(buildUrl('/overtakes', params));
+    const res = await fetchData(buildUrl('/overtakes', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchPit(params: Record<string, string | number | boolean>): Promise<Pit[]> {
-    const res = await fetchWithRetry(buildUrl('/pit', params));
+    const res = await fetchData(buildUrl('/pit', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchPosition(params: Record<string, string | number | boolean>): Promise<Position[]> {
-    const res = await fetchWithRetry(buildUrl('/position', params));
+    const res = await fetchData(buildUrl('/position', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchRaceControl(params: Record<string, string | number | boolean>): Promise<RaceControl[]> {
-    const res = await fetchWithRetry(buildUrl('/race_control', params));
+    const res = await fetchData(buildUrl('/race_control', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchSessions(params: Record<string, string | number | boolean>): Promise<Session[]> {
-    const res = await fetchWithRetry(buildUrl('/sessions', params));
+    const res = await fetchData(buildUrl('/sessions', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchSessionResult(params: Record<string, string | number | boolean>): Promise<SessionResult[]> {
-    const res = await fetchWithRetry(buildUrl('/session_result', params));
+    const res = await fetchData(buildUrl('/session_result', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchStartingGrid(params: Record<string, string | number | boolean>): Promise<StartingGrid[]> {
-    const res = await fetchWithRetry(buildUrl('/starting_grid', params));
+    const res = await fetchData(buildUrl('/starting_grid', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchStints(params: Record<string, string | number | boolean>): Promise<Stint[]> {
-    const res = await fetchWithRetry(buildUrl('/stints', params));
+    const res = await fetchData(buildUrl('/stints', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchTeamRadio(params: Record<string, string | number | boolean>): Promise<TeamRadio[]> {
-    const res = await fetchWithRetry(buildUrl('/team_radio', params));
+    const res = await fetchData(buildUrl('/team_radio', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
   },
 
   async fetchWeather(params: Record<string, string | number | boolean>): Promise<Weather[]> {
-    const res = await fetchWithRetry(buildUrl('/weather', params));
+    const res = await fetchData(buildUrl('/weather', params));
     if (res.status === 404) return [];
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
     return res.json();
