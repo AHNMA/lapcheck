@@ -1,0 +1,5 @@
+{
+  "name": "Lap-Check",
+  "description": "Professional Formula 1 telemetry comparison tool. Analyze speed traces and driver performance with precision.",
+  "requestFramePermissions": []
+}
