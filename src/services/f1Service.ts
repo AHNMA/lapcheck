@@ -80,22 +80,26 @@ export interface Interval {
 }
 
 export interface Lap {
-  date_start: string;
-  driver_number: number;
-  duration_sector_1?: number;
-  duration_sector_2?: number;
-  duration_sector_3?: number;
-  i1_speed?: number;
-  i2_speed?: number;
-  is_pit_out_lap: boolean;
-  lap_duration: number;
   lap_number: number;
-  meeting_key: number;
-  segments_sector_1?: number[];
-  segments_sector_2?: number[];
-  segments_sector_3?: number[];
-  session_key: number;
-  st_speed?: number;
+  lap_time: string;
+  compound: string;
+}
+
+export interface TelemetryResponse {
+  year: number;
+  race: string;
+  session: string;
+  driver: string;
+  lap_time: string;
+  telemetry: {
+    Date: string;
+    Distance: number;
+    Speed: number;
+    nGear: number;
+    Throttle: number;
+    Brake: number;
+    RPM: number;
+  }[];
 }
 
 export interface LocationData {
@@ -384,7 +388,7 @@ export const f1Service = {
 
   async getMeetings(year: number): Promise<Meeting[]> {
     const meetings = await this.fetchMeetings({ year });
-    return Array.from(new Map(meetings.map(m => [m.meeting_key, m])).values());
+    return Array.from(new Map<number, Meeting>(meetings.map((m: Meeting) => [m.meeting_key, m])).values());
   },
 
   async getSessions(meetingKey: number, year?: number, circuitShortName?: string): Promise<Session[]> {
@@ -415,97 +419,46 @@ export const f1Service = {
 
   async getDrivers(sessionKey: number): Promise<Driver[]> {
     const drivers = await this.fetchDrivers({ session_key: sessionKey });
-    return Array.from(new Map(drivers.map(d => [d.driver_number, d])).values());
+    return Array.from(new Map<number, Driver>(drivers.map((d: Driver) => [d.driver_number, d])).values());
   },
 
-  async getAllLaps(sessionKey: number, driverNumber: number): Promise<Lap[]> {
-    const laps = await this.fetchLaps({ session_key: sessionKey, driver_number: driverNumber });
-
-    // Deduplicate by lap_number and filter out invalid laps, sort by lap number
-    const uniqueLaps = Array.from(new Map(laps.map(l => [l.lap_number, l])).values());
-
-    return uniqueLaps
-      .filter(l => l.lap_duration && l.lap_duration > 0)
-      .sort((a, b) => a.lap_number - b.lap_number);
+  async getAllLaps(year: number, race: string, session: string, driver: string): Promise<Lap[]> {
+    const url = `${BASE_URL}/laps/${year}/${encodeURIComponent(race)}/${encodeURIComponent(session)}/${encodeURIComponent(driver)}`;
+    try {
+      const res = await fetchData(url);
+      if (res.status === 404) return [];
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+      const data = await res.json();
+      return data.laps || [];
+    } catch (err) {
+      console.error('Laps fetch error:', err);
+      return [];
+    }
   },
 
-  async getTelemetry(sessionKey: number, driverNumber: number, lap: Lap): Promise<TelemetryPoint[]> {
-    const start = new Date(lap.date_start);
-    const end = new Date(start.getTime() + (lap.lap_duration || 0) * 1000);
-
-    // OpenF1 API expects YYYY-MM-DDTHH:mm:ss.SSS without the 'Z' suffix
-    const formatF1Date = (date: Date) => date.toISOString().replace('Z', '');
-
-    const queryStart = formatF1Date(new Date(start.getTime() - 1000));
-    const queryEnd = formatF1Date(new Date(end.getTime() + 1000));
+  async getTelemetry(year: number, race: string, session: string, driver: string, lapNumber?: number): Promise<TelemetryPoint[]> {
+    let url = `${BASE_URL}/telemetry/${year}/${encodeURIComponent(race)}/${encodeURIComponent(session)}/${encodeURIComponent(driver)}`;
+    if (lapNumber !== undefined) {
+      url += `?lap_number=${lapNumber}`;
+    }
 
     try {
-      const carData = await this.fetchCarData({
-        session_key: sessionKey,
-        driver_number: driverNumber,
-        'date>=': queryStart,
-        'date<=': queryEnd,
-      });
+      const res = await fetchData(url);
+      if (res.status === 404) return [];
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+      const data: TelemetryResponse = await res.json();
 
-      if (!carData || carData.length === 0) return [];
+      if (!data.telemetry || data.telemetry.length === 0) return [];
 
-      carData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-      const lapStartTime = start.getTime();
-      const lapEndTime = end.getTime();
-
-      let cumulativeDistance = 0;
-      const telemetryPoints: TelemetryPoint[] = [];
-
-      let firstPointIdx = carData.findIndex(cd => new Date(cd.date).getTime() >= lapStartTime);
-      if (firstPointIdx === -1) firstPointIdx = 0;
-
-      if (firstPointIdx > 0) {
-        const pBefore = carData[firstPointIdx - 1];
-        const pAfter = carData[firstPointIdx];
-        const tBefore = new Date(pBefore.date).getTime();
-        const tAfter = new Date(pAfter.date).getTime();
-        const vBefore = pBefore.speed / 3.6;
-        const vAfter = pAfter.speed / 3.6;
-
-        const ratio = (lapStartTime - tBefore) / (tAfter - tBefore);
-        const vAtStart = vBefore + (vAfter - vBefore) * ratio;
-
-        const timeDelta = (tAfter - lapStartTime) / 1000;
-        cumulativeDistance = ((vAtStart + vAfter) / 2) * timeDelta;
-      }
-
-      let lastTimestamp = new Date(carData[firstPointIdx].date).getTime();
-      let lastSpeedMs = carData[firstPointIdx].speed / 3.6;
-
-      for (let i = firstPointIdx; i < carData.length; i++) {
-        const cd = carData[i];
-        const currentTimestamp = new Date(cd.date).getTime();
-
-        if (currentTimestamp > lapEndTime + 500) break;
-
-        const timeDeltaSeconds = (currentTimestamp - lastTimestamp) / 1000;
-        const speedMs = cd.speed / 3.6;
-
-        if (timeDeltaSeconds > 0 && timeDeltaSeconds < 5) {
-          cumulativeDistance += ((lastSpeedMs + speedMs) / 2) * timeDeltaSeconds;
-        }
-
-        lastTimestamp = currentTimestamp;
-        lastSpeedMs = speedMs;
-
-        telemetryPoints.push({
-          date: cd.date,
-          speed: cd.speed,
-          distance: Math.round(cumulativeDistance),
-          throttle: cd.throttle,
-          brake: cd.brake,
-          rpm: cd.rpm,
-          gear: cd.n_gear,
-        });
-      }
-
-      return telemetryPoints;
+      return data.telemetry.map(point => ({
+        date: point.Date,
+        speed: point.Speed,
+        distance: point.Distance,
+        throttle: point.Throttle,
+        brake: point.Brake,
+        rpm: point.RPM,
+        gear: point.nGear,
+      }));
     } catch (err) {
       console.error('Telemetry fetch error:', err);
       return [];
