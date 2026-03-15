@@ -466,10 +466,10 @@ export default function App() {
           const results: any[] = [];
           for (const driverNum of selectedDrivers) {
             if (isCancelled) return;
-            const driver = drivers.find(d => d.driver_number === driverNum);
+            const driver = drivers.find(d => String(d.DriverNumber) === String(driverNum));
             const lap = selectedLaps[driverNum];
             
-            if (!lap) {
+            if (!lap || !driver) {
               results.push({ driver, telemetry: [] });
               continue;
             }
