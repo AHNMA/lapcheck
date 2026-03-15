@@ -12,16 +12,27 @@ async function fetchData(url: string): Promise<Response> {
 
 
 export interface Driver {
-  driver_number: string;
-  broadcast_name: string;
-  abbreviation: string;
-  team_name: string;
+  DriverNumber: string;
+  BroadcastName: string;
+  Abbreviation: string;
+  TeamName: string;
+  FullName: string;
+  HeadshotUrl: string;
+  CountryCode: string;
+  team_colour?: string; // Custom field to hold merged color
+}
+
+export interface Team {
+  TeamId: string;
+  TeamName: string;
+  TeamColor: string;
 }
 
 export interface Lap {
-  lap_number: number;
-  lap_time: string;
-  compound: string;
+  LapNumber: number;
+  LapTime: string;
+  Compound: string;
+  IsPersonalBest: boolean;
 }
 
 export interface TelemetryResponse {
@@ -75,6 +86,19 @@ export const f1Service = {
       return data.meetings || [];
     } catch (err) {
       console.error('Meetings fetch error:', err);
+      return [];
+    }
+  },
+
+  async getTeams(year: number, race: string, session: string): Promise<Team[]> {
+    try {
+      const res = await fetchData(`${BASE_URL}/teams/${year}/${encodeURIComponent(race)}/${encodeURIComponent(session)}`);
+      if (res.status === 404) return [];
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+      const data = await res.json();
+      return data.teams || [];
+    } catch (err) {
+      console.error('Teams fetch error:', err);
       return [];
     }
   },
