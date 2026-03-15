@@ -32,7 +32,6 @@ import {
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { f1Service, Meeting, Session, Driver, TelemetryPoint, Lap } from './services/f1Service';
-import { mapSessionName } from './services/sessionMapper';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -167,7 +166,7 @@ interface TelemetryChartProps {
   data: any[];
   metric: string;
   drivers: Driver[];
-  selectedDrivers: number[];
+  selectedDrivers: string[];
   height?: number | string;
   showXAxis?: boolean;
 }
@@ -225,13 +224,16 @@ function TelemetryChart({ data, metric, drivers, selectedDrivers, height = 200, 
               const prevD = drivers.find(drv => drv.driver_number === prevNum);
               return prevD && d && prevD.team_name === d.team_name;
             });
+            // Assign some default colors if team_colour is missing from the new API
+            const defaultColors = ['#FF1E1E', '#1E90FF', '#32CD32', '#FFA500', '#9370DB', '#00CED1'];
+            const color = (d as any).team_colour ? `#${(d as any).team_colour}` : defaultColors[idx % defaultColors.length];
             return (
               <Line
                 key={`${num}-${metric}`}
                 type={metric === 'gear' ? 'step' : 'monotone'}
-                dataKey={`${d.name_acronym}_${metric}`}
-                name={`${d.name_acronym}_${num}_${metric}`}
-                stroke={`#${d.team_colour || (idx === 0 ? 'FF1E1E' : 'FFFFFF')}`}
+                dataKey={`${d.abbreviation}_${metric}`}
+                name={`${d.abbreviation}_${num}_${metric}`}
+                stroke={color}
                 strokeWidth={2}
                 strokeDasharray={isDashed ? "5 5" : undefined}
                 dot={false}
@@ -254,9 +256,9 @@ export default function App() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [selectedDrivers, setSelectedDrivers] = useState<number[]>([]);
-  const [availableLaps, setAvailableLaps] = useState<Record<number, Lap[]>>({});
-  const [selectedLaps, setSelectedLaps] = useState<Record<number, Lap | null>>({});
+  const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
+  const [availableLaps, setAvailableLaps] = useState<Record<string, Lap[]>>({});
+  const [selectedLaps, setSelectedLaps] = useState<Record<string, Lap | null>>({});
   const [telemetryData, setTelemetryData] = useState<any[]>([]);
   const [selectedMetric, setSelectedMetric] = useState('speed');
   const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
@@ -272,21 +274,13 @@ export default function App() {
       try {
         setLoading(true);
         const data = await f1Service.getMeetings(year);
-        // Sort by date_start
-        const sorted = data.sort((a, b) => 
-          new Date(a.date_start).getTime() - new Date(b.date_start).getTime()
-        );
+        // Sort by round
+        const sorted = data.sort((a, b) => a.round - b.round);
         
         setMeetings(sorted);
         
-        const now = new Date();
-        const pastMeetings = sorted.filter(m => new Date(m.date_start) <= now);
-        
-        if (pastMeetings.length > 0) {
-          setSelectedMeeting(pastMeetings[pastMeetings.length - 1]);
-          setError(null);
-        } else if (sorted.length > 0) {
-          setSelectedMeeting(sorted[0]);
+        if (sorted.length > 0) {
+          setSelectedMeeting(sorted[sorted.length - 1]);
           setError(null);
         } else {
           setSelectedMeeting(null);
@@ -313,21 +307,15 @@ export default function App() {
     const loadSessions = async () => {
       try {
         setLoading(true);
-        const sortedSessions = await f1Service.getSessions(
-          selectedMeeting.meeting_key, 
-          selectedMeeting.year, 
-          selectedMeeting.circuit_short_name
+        const sessionsData = await f1Service.getSessions(
+          year,
+          selectedMeeting.meeting_name
         );
         
-        setSessions(sortedSessions);
+        setSessions(sessionsData);
         
-        const now = new Date();
-        const pastSessions = sortedSessions.filter(s => new Date(s.date_start) <= now);
-
-        if (pastSessions.length > 0) {
-          setSelectedSession(pastSessions[pastSessions.length - 1]);
-        } else if (sortedSessions.length > 0) {
-          setSelectedSession(sortedSessions[0]);
+        if (sessionsData.length > 0) {
+          setSelectedSession(sessionsData[sessionsData.length - 1]);
         } else {
           setSelectedSession(null);
           setDrivers([]);
@@ -357,7 +345,7 @@ export default function App() {
     const loadDrivers = async () => {
       try {
         setLoading(true);
-        const data = await f1Service.getDrivers(selectedSession.session_key);
+        const data = await f1Service.getDrivers(year, selectedMeeting.meeting_name, selectedSession.session_name);
         setDrivers(data);
         
         // Always pick top 2 drivers when session changes to trigger auto-plot
@@ -402,8 +390,7 @@ export default function App() {
           newLapsToFetch.map(async (num) => {
           const d = drivers.find(drv => drv.driver_number === num);
           if (!d) return { num, laps: [] };
-          const mappedSession = mapSessionName(selectedSession.session_name);
-          const laps = await f1Service.getAllLaps(year, selectedMeeting?.meeting_name || '', mappedSession, d.name_acronym);
+          const laps = await f1Service.getAllLaps(year, selectedMeeting?.meeting_name || '', selectedSession.session_name, d.abbreviation);
             return { num, laps };
           })
         );
@@ -475,12 +462,11 @@ export default function App() {
               continue;
             }
             
-            const mappedSession = mapSessionName(selectedSession.session_name);
             const telemetry = await f1Service.getTelemetry(
               year,
               selectedMeeting?.meeting_name || '',
-              mappedSession,
-              driver.name_acronym,
+              selectedSession.session_name,
+              driver.abbreviation,
               lap.lap_number
             );
 
@@ -537,11 +523,11 @@ export default function App() {
                 const val1 = p1[metric as keyof TelemetryPoint] as number;
                 const val2 = p2[metric as keyof TelemetryPoint] as number;
                 const interpolated = val1 + (val2 - val1) * ratio;
-                mergedPoint[`${res.driver.name_acronym}_${metric}`] = interpolated;
+                mergedPoint[`${res.driver.abbreviation}_${metric}`] = interpolated;
               });
               
               // Also store the acronym for the legend/tooltips if needed
-              mergedPoint[res.driver.name_acronym] = true; 
+              mergedPoint[res.driver.abbreviation] = true;
             });
             
             if (Object.keys(mergedPoint).length > 1) {
@@ -571,7 +557,7 @@ export default function App() {
     };
   }, [selectedLaps, selectedDrivers, selectedSession, drivers]);
 
-  const handleDriverToggle = (driverNumber: number) => {
+  const handleDriverToggle = (driverNumber: string) => {
     setSelectedDrivers(prev => {
       if (prev.includes(driverNumber)) {
         return prev.filter(id => id !== driverNumber);
@@ -600,7 +586,7 @@ export default function App() {
       });
       
       const driverNames = selectedDrivers
-        .map(num => drivers.find(d => d.driver_number === num)?.name_acronym)
+        .map(num => drivers.find(d => d.driver_number === num)?.abbreviation)
         .filter(Boolean)
         .join('-');
       
@@ -689,7 +675,7 @@ export default function App() {
                   value={selectedMeeting}
                   onChange={setSelectedMeeting}
                   getLabel={(m) => m.meeting_name}
-                  getKey={(m) => m.meeting_key}
+                  getKey={(m) => m.round}
                   placeholder="Select Grand Prix"
                 />
 
@@ -707,7 +693,7 @@ export default function App() {
                         value={selectedSession}
                         onChange={setSelectedSession}
                         getLabel={(s) => s.session_name}
-                        getKey={(s) => s.session_key}
+                        getKey={(s) => s.session_identifier}
                         placeholder="Select Session"
                       />
                     </motion.div>
@@ -756,15 +742,15 @@ export default function App() {
                           >
                             <div 
                               className="absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5" 
-                              style={{ backgroundColor: `#${d.team_colour || '888'}` }} 
+                              style={{ backgroundColor: `#${(d as any).team_colour || '888'}` }}
                             />
                             <div className="pl-1.5 flex justify-between items-start w-full">
                               <span className="font-mono font-bold text-xs">{d.driver_number}</span>
                               <span className={cn("font-mono text-[8px] px-1 rounded", selectedDrivers.includes(d.driver_number) ? "bg-white/20" : "bg-dark-surface")}>
-                                {d.name_acronym}
+                                {d.abbreviation}
                               </span>
                             </div>
-                            <span className="pl-1.5 truncate font-bold uppercase tracking-tight text-[9px]">{d.full_name.split(' ').pop()}</span>
+                            <span className="pl-1.5 truncate font-bold uppercase tracking-tight text-[9px]">{d.broadcast_name.split(' ').pop()}</span>
                           </button>
                         ))}
                       </div>
@@ -793,7 +779,7 @@ export default function App() {
                         return (
                           <div key={`sidebar-lap-${num}`} className="bg-dark-bg border border-dark-border p-2 rounded-sm">
                             <CustomDropdown
-                              label={`LAP FOR ${d?.name_acronym}`}
+                              label={`LAP FOR ${d?.abbreviation}`}
                               icon={<Timer className="w-3 h-3 text-f1-red" />}
                               options={laps}
                               value={selectedLaps[num] || null}
@@ -887,13 +873,13 @@ export default function App() {
                             className="w-1 rounded-full" 
                             style={{ 
                               background: isDashed 
-                                ? `repeating-linear-gradient(to bottom, #${d?.team_colour || '888'}, #${d?.team_colour || '888'} 4px, transparent 4px, transparent 8px)`
-                                : `#${d?.team_colour || '888'}` 
+                                ? `repeating-linear-gradient(to bottom, #${(d as any)?.team_colour || '888'}, #${(d as any)?.team_colour || '888'} 4px, transparent 4px, transparent 8px)`
+                                : `#${(d as any)?.team_colour || '888'}`
                             }} 
                           />
                           <div className="flex flex-col justify-between">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-black text-lg tracking-tighter leading-none">{d?.name_acronym}</span>
+                              <span className="font-black text-lg tracking-tighter leading-none">{d?.abbreviation}</span>
                               {isDashed && <span className="text-[8px] font-mono opacity-50 border border-white/20 px-1 rounded-sm">DASHED</span>}
                             </div>
                             {lap && (
@@ -1082,12 +1068,12 @@ export default function App() {
                         className="w-2 h-8" 
                         style={{ 
                           background: isDashed 
-                            ? `repeating-linear-gradient(to bottom, #${d?.team_colour || '888'}, #${d?.team_colour || '888'} 6px, transparent 6px, transparent 12px)`
-                            : `#${d?.team_colour || '888'}` 
+                            ? `repeating-linear-gradient(to bottom, #${(d as any)?.team_colour || '888'}, #${(d as any)?.team_colour || '888'} 6px, transparent 6px, transparent 12px)`
+                            : `#${(d as any)?.team_colour || '888'}`
                         }} 
                       />
                       <div className="flex items-center gap-3">
-                        <span className="font-mono font-bold text-3xl">{d?.name_acronym}</span>
+                        <span className="font-mono font-bold text-3xl">{d?.abbreviation}</span>
                         {isDashed && <span className="text-xs font-mono opacity-50 border border-white/20 px-2 py-0.5 rounded-sm">DASHED</span>}
                       </div>
                     </div>
@@ -1133,13 +1119,16 @@ export default function App() {
                     const prevD = drivers.find(drv => drv.driver_number === prevNum);
                     return prevD && d && prevD.team_name === d.team_name;
                   });
+                  // Assign some default colors if team_colour is missing from the new API
+                  const defaultColors = ['#FF1E1E', '#1E90FF', '#32CD32', '#FFA500', '#9370DB', '#00CED1'];
+                  const color = (d as any).team_colour ? `#${(d as any).team_colour}` : defaultColors[idx % defaultColors.length];
                   return (
                     <Line
                       key={`export-line-${num}`}
                       type="monotone"
-                      dataKey={`${d.name_acronym}_speed`}
-                      name={`${d.name_acronym}_${num}_speed`}
-                      stroke={`#${d.team_colour || (idx === 0 ? 'FF1E1E' : 'FFFFFF')}`}
+                      dataKey={`${d.abbreviation}_speed`}
+                      name={`${d.abbreviation}_${num}_speed`}
+                      stroke={color}
                       strokeWidth={4}
                       strokeDasharray={isDashed ? "5 5" : undefined}
                       dot={false}
