@@ -280,7 +280,7 @@ export default function App() {
         setMeetings(sorted);
         
         if (sorted.length > 0) {
-          setSelectedMeeting(sorted[sorted.length - 1]);
+          setSelectedMeeting(sorted[0]);
           setError(null);
         } else {
           setSelectedMeeting(null);
