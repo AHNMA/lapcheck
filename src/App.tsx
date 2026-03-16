@@ -257,11 +257,10 @@ const TelemetryChart = React.memo(function TelemetryChart({
   );
 }, (prevProps, nextProps) => {
   return prevProps.metric === nextProps.metric &&
-         prevProps.selectedDrivers.length === nextProps.selectedDrivers.length &&
-         prevProps.data.length === nextProps.data.length &&
-         prevProps.showXAxis === nextProps.showXAxis;
+         prevProps.showXAxis === nextProps.showXAxis &&
+         prevProps.selectedDrivers.join(',') === nextProps.selectedDrivers.join(',') &&
+         prevProps.data === nextProps.data;
 });
-
 
 export default function App() {
   const [year, setYear] = useState(2026);
@@ -732,7 +731,6 @@ export default function App() {
               </div>
             </div>
             <div className="flex-1 border border-dark-border bg-dark-surface/30 rounded-xl relative overflow-hidden p-8" style={{ minHeight: 0, minWidth: 0, position: 'relative' }}>
-               {/* Nutzt für den Export die aktuell gewählte Metrik (oder Default 'speed') */}
                <TelemetryChart data={telemetryData} metric={viewMode === 'single' ? selectedMetric : 'speed'} results={results} selectedDrivers={selectedDrivers} height="100%" showXAxis={true} />
             </div>
           </div>
