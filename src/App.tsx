@@ -418,55 +418,37 @@ export default function App() {
         setLoading(true);
         setError(null);
         try {
-          // Parallel-Download der Telemetrie für blitzschnelles Laden
-          const fetchPromises = selectedDrivers.map(async (driverNum) => {
-            const driver = results.find(d => String(d.DriverNumber) === String(driverNum));
-            const lap = selectedLaps[driverNum];
-            if (!lap || !driver) return { driver, telemetry: [] };
+          const workerData = await new Promise((resolve, reject) => {
+            const worker = new Worker(new URL('./workers/telemetryWorker.ts', import.meta.url), { type: 'module' });
             
-            const telemetry = await f1Service.getTelemetry(
-              year, selectedMeeting?.meeting_name || '', selectedSession.session_name, driver.Abbreviation, lap.LapNumber
-            );
-            return { driver, telemetry };
+            worker.onmessage = (e) => {
+              if (e.data.type === 'SUCCESS') {
+                resolve(e.data.data);
+              } else {
+                reject(new Error(e.data.error));
+              }
+              worker.terminate();
+            };
+
+            worker.onerror = (err) => {
+              reject(new Error('Worker execution failed'));
+              worker.terminate();
+            };
+
+            worker.postMessage({
+              year,
+              meetingName: selectedMeeting?.meeting_name || '',
+              sessionName: selectedSession.session_name,
+              drivers: selectedDrivers,
+              results,
+              selectedLaps,
+              metrics: METRICS
+            });
           });
 
-          const resultsData = await Promise.all(fetchPromises);
           if (isCancelled) return;
 
-          const merged: any[] = [];
-          const maxDistance = Math.max(...resultsData.map(r => r.telemetry.length > 0 ? r.telemetry[r.telemetry.length - 1].distance || 0 : 0));
-          const indices = new Array(resultsData.length).fill(0);
-
-          for (let dist = 0; dist <= maxDistance; dist += 20) {
-            const mergedPoint: any = { distance: dist };
-            resultsData.forEach((res, idx) => {
-              if (!res.driver || res.telemetry.length < 2) return;
-              const telemetry = res.telemetry;
-              if (dist < telemetry[0].distance || dist > telemetry[telemetry.length - 1].distance) return;
-              
-              let i = indices[idx];
-              while (i < telemetry.length - 1 && telemetry[i + 1].distance < dist) i++;
-              indices[idx] = i;
-              
-              const p1 = telemetry[i];
-              const p2 = telemetry[i + 1];
-              if (!p1 || !p2) return;
-              
-              const d1 = p1.distance || 0;
-              const d2 = p2.distance || 0;
-              if (d2 - d1 > 200) return;
-              
-              const ratio = d2 > d1 ? (dist - d1) / (d2 - d1) : 0;
-              METRICS.forEach(metric => {
-                const val1 = p1[metric as keyof TelemetryPoint] as number;
-                const val2 = p2[metric as keyof TelemetryPoint] as number;
-                mergedPoint[`${res.driver.Abbreviation}_${metric}`] = val1 + (val2 - val1) * ratio;
-              });
-              mergedPoint[res.driver.Abbreviation] = true;
-            });
-            if (Object.keys(mergedPoint).length > 1) merged.push(mergedPoint);
-          }
-          setTelemetryData(merged);
+          setTelemetryData(workerData as any[]);
           setIsInitialLoad(false);
         } catch (err) {
           if (!isCancelled) {
