@@ -58,6 +58,15 @@ const formatLapTime = (lapTime: string | null | undefined) => {
   return lapTime;
 };
 
+// Hilfsfunktion zum Berechnen der schnellsten Runde (in Sekunden)
+const parseLapTime = (timeStr: string | null | undefined): number => {
+  if (!timeStr || timeStr === 'None') return Infinity;
+  const match = timeStr.match(/(?:(\d+) days? )?(\d+):(\d+):([\d.]+)/);
+  if (!match) return Infinity;
+  const [, days, hours, minutes, seconds] = match;
+  return (parseInt(days || '0') * 86400) + (parseInt(hours) * 3600) + (parseInt(minutes) * 60) + parseFloat(seconds);
+};
+
 // Custom Dropdown Component
 interface DropdownProps<T> {
   label: string;
@@ -245,7 +254,13 @@ export default function App() {
 
   const { data: meetings = [], isLoading: loadingMeetings, error: errorMeetings } = useQuery({
     queryKey: ['meetings', year],
-    queryFn: () => f1Service.getMeetings(year)
+    queryFn: async () => {
+      const data = await f1Service.getMeetings(year);
+      const now = new Date();
+      // FIX 4: Ersetze Leerzeichen durch 'T' für ISO-8601 Safari-Kompatibilität
+      const pastMeetings = data.filter(m => new Date(m.event_date.replace(' ', 'T')) <= now);
+      return pastMeetings.sort((a, b) => a.round - b.round);
+    }
   });
 
   const { data: sessions = [], isLoading: loadingSessions, error: errorSessions } = useQuery({
@@ -265,7 +280,7 @@ export default function App() {
 
   const lapQueries = useQueries({
     queries: selectedDrivers.map(num => {
-      const driver = results.find(r => r.DriverNumber === num);
+      const driver = results.find(r => String(r.DriverNumber) === String(num));
       return {
         queryKey: ['laps', year, selectedMeeting?.meeting_name, selectedSession?.session_name, num],
         queryFn: () => f1Service.getAllLaps(year, selectedMeeting!.meeting_name, selectedSession!.session_name, driver!.Abbreviation),
@@ -312,26 +327,76 @@ export default function App() {
 
   // --- AUTO-SELECTIONS & STATE RESETS ---
 
+  // 1. Auto-Select Meeting
   useEffect(() => {
-    if (meetings.length > 0 && (!selectedMeeting || !meetings.find(m => m.round === selectedMeeting.round))) {
-      setSelectedMeeting(meetings[0]);
+    if (meetings.length > 0 && !selectedMeeting) {
+      setSelectedMeeting(meetings[meetings.length - 1]);
     } else if (meetings.length === 0) {
       setSelectedMeeting(null);
     }
-  }, [meetings]);
+  }, [meetings, selectedMeeting]);
 
+  // 2. Auto-Select Session
   useEffect(() => {
-    if (sessions.length > 0 && (!selectedSession || !sessions.find(s => s.session_identifier === selectedSession.session_identifier))) {
+    if (sessions.length > 0 && !selectedSession) {
       setSelectedSession(sessions[sessions.length - 1]);
     } else if (sessions.length === 0) {
       setSelectedSession(null);
     }
-  }, [sessions]);
+  }, [sessions, selectedSession]);
 
+  // 3. Auto-Select Drivers (Smart Overwrite) & Reset Laps
   useEffect(() => {
-    setSelectedDrivers([]);
-    setSelectedLaps({});
-  }, [results]);
+    setSelectedLaps({}); // FIX 2: Bei neuer Session IMMER die Runden verwerfen
+
+    if (results.length > 0) {
+      setSelectedDrivers(prevDrivers => {
+        // Prüfen, ob die bisher gewählten Fahrer in der neuen Session existieren
+        const validExistingDrivers = prevDrivers.filter(num =>
+          results.some(r => String(r.DriverNumber) === String(num))
+        );
+
+        // Wenn beide noch gültig sind, behalte sie!
+        if (validExistingDrivers.length === 2) return validExistingDrivers;
+
+        // Wenn nur einer gültig ist, fülle mit dem Nächstbesten auf
+        if (validExistingDrivers.length === 1) {
+          const nextBest = results.find(r => String(r.DriverNumber) !== validExistingDrivers[0]);
+          return nextBest ? [...validExistingDrivers, String(nextBest.DriverNumber)] : validExistingDrivers;
+        }
+
+        // Wenn keiner gültig war (oder prevDrivers leer ist), nimm die Top 2 der neuen Session
+        return results.slice(0, 2).map(r => String(r.DriverNumber));
+      });
+    } else {
+      setSelectedDrivers([]);
+    }
+  }, [results]); // Dieser Effekt feuert nur, wenn neue Resultate geladen wurden
+
+  // 4. Auto-Select Fastest Laps (Infinite Loop Safe)
+  useEffect(() => {
+    setSelectedLaps(prevLaps => {
+      let hasChanges = false;
+      const nextLaps = { ...prevLaps };
+
+      selectedDrivers.forEach(num => {
+        if (!nextLaps[num] && availableLaps[num] && availableLaps[num].length > 0) {
+          const validLaps = availableLaps[num].filter(l => l.LapTime && l.LapTime !== 'None');
+
+          if (validLaps.length > 0) {
+            const fastest = validLaps.reduce((min, lap) =>
+              parseLapTime(lap.LapTime) < parseLapTime(min.LapTime) ? lap : min
+            );
+            nextLaps[num] = fastest;
+            hasChanges = true;
+          }
+        }
+      });
+
+      // FIX 3: Durch den Return des unveränderten 'prevLaps' bricht React den Render-Zyklus ab
+      return hasChanges ? nextLaps : prevLaps;
+    });
+  }, [availableLaps, selectedDrivers]); // selectedLaps ist KEINE Dependency mehr!
 
   const handleDriverToggle = (driverNumber: string) => {
     setSelectedDrivers(prev => {
