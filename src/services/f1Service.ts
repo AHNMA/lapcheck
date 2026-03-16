@@ -86,6 +86,7 @@ export interface Meeting {
   meeting_name: string;
   country: string;
   location: string;
+  event_date: string;
 }
 
 export interface Session {
