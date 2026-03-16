@@ -31,7 +31,7 @@ import {
   Download
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
-import { f1Service, Meeting, Session, Driver, TelemetryPoint, Lap } from './services/f1Service';
+import { f1Service, Meeting, Session, F1Result, TelemetryPoint, Lap } from './services/f1Service';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -165,13 +165,13 @@ function CustomDropdown<T>({
 interface TelemetryChartProps {
   data: any[];
   metric: string;
-  drivers: Driver[];
+  results: F1Result[];
   selectedDrivers: string[];
   height?: number | string;
   showXAxis?: boolean;
 }
 
-function TelemetryChart({ data, metric, drivers, selectedDrivers, height = 200, showXAxis = false }: TelemetryChartProps) {
+function TelemetryChart({ data, metric, results, selectedDrivers, height = 200, showXAxis = false }: TelemetryChartProps) {
   return (
     <div className="w-full flex-1" style={{ height: typeof height === 'number' ? `${height}px` : height, minHeight: 0, minWidth: 0, position: 'relative' }}>
       <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
@@ -218,15 +218,15 @@ function TelemetryChart({ data, metric, drivers, selectedDrivers, height = 200, 
             }}
           />
           {selectedDrivers.map((num, idx) => {
-            const d = drivers.find(drv => drv.DriverNumber === num);
+            const d = results.find(drv => drv.DriverNumber === num);
             if (!d) return null;
             const isDashed = selectedDrivers.slice(0, idx).some(prevNum => {
-              const prevD = drivers.find(drv => drv.DriverNumber === prevNum);
+              const prevD = results.find(drv => drv.DriverNumber === prevNum);
               return prevD && d && prevD.TeamName === d.TeamName;
             });
-            // Assign some default colors if team_colour is missing from the new API
+            // Assign some default colors if TeamColor is missing from the new API
             const defaultColors = ['#FF1E1E', '#1E90FF', '#32CD32', '#FFA500', '#9370DB', '#00CED1'];
-            const color = d.team_colour ? `#${d.team_colour}` : defaultColors[idx % defaultColors.length];
+            const color = d.TeamColor ? `#${d.TeamColor}` : defaultColors[idx % defaultColors.length];
             return (
               <Line
                 key={`${num}-${metric}`}
@@ -255,7 +255,7 @@ export default function App() {
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [results, setResults] = useState<F1Result[]>([]);
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
   const [availableLaps, setAvailableLaps] = useState<Record<string, Lap[]>>({});
   const [selectedLaps, setSelectedLaps] = useState<Record<string, Lap | null>>({});
@@ -318,7 +318,7 @@ export default function App() {
           setSelectedSession(sessionsData[sessionsData.length - 1]);
         } else {
           setSelectedSession(null);
-          setDrivers([]);
+          setResults([]);
           setSelectedDrivers([]);
           setAvailableLaps({});
           setSelectedLaps({});
@@ -339,53 +339,38 @@ export default function App() {
     loadSessions();
   }, [selectedMeeting]);
 
-  // Load drivers when session changes
+  // Load results when session changes
   useEffect(() => {
     if (!selectedSession) return;
-    const loadDrivers = async () => {
+    const loadResults = async () => {
       try {
         setLoading(true);
-        const [driversData, teamsData] = await Promise.all([
-          f1Service.getDrivers(year, selectedMeeting.meeting_name, selectedSession.session_name),
-          f1Service.getTeams(year, selectedMeeting.meeting_name, selectedSession.session_name)
-        ]);
+        const resultsData = await f1Service.getResults(year, selectedMeeting.meeting_name, selectedSession.session_name);
 
-        const mergedDrivers = driversData.map(d => {
-          const team = teamsData.find(t => t.TeamName === d.TeamName);
-          return {
-            ...d,
-            team_colour: team?.TeamColor
-          };
-        });
-
-        setDrivers(mergedDrivers);
+        setResults(resultsData.sort((a, b) => a.Position - b.Position));
         
-        // Always pick top 2 drivers when session changes to trigger auto-plot
-        if (mergedDrivers.length >= 2) {
-          setSelectedDrivers([mergedDrivers[0].DriverNumber, mergedDrivers[1].DriverNumber]);
-        } else if (mergedDrivers.length > 0) {
-          setSelectedDrivers([mergedDrivers[0].DriverNumber]);
-        } else {
-          setSelectedDrivers([]);
-          setIsInitialLoad(false);
-        }
+        // Removed auto-selection of top drivers
+        setSelectedDrivers([]);
         
-        // Reset telemetry to trigger auto-plot effect
+        // Reset telemetry and laps
         setTelemetryData([]);
         setAvailableLaps({});
         setSelectedLaps({});
+        setIsInitialLoad(false);
       } catch (err) {
         setError(
-          err instanceof Error && err.message.includes('Live F1 session in progress')
+          err instanceof Error && err.message.includes('Live-Datenlimit erreicht')
+            ? err.message
+            : err instanceof Error && err.message.includes('Live F1 session in progress')
             ? 'API access is restricted during live F1 sessions. Get an API key here: https://buy.stripe.com/eVqcN41BPekP0iIalBcEw02'
-            : `Failed to load drivers: ${err instanceof Error ? err.message : String(err)}`
+            : `Failed to load results: ${err instanceof Error ? err.message : String(err)}`
         );
         setIsInitialLoad(false);
       } finally {
         setLoading(false);
       }
     };
-    loadDrivers();
+    loadResults();
   }, [selectedSession]);
 
   // Load laps for selected drivers
@@ -400,9 +385,9 @@ export default function App() {
         setLoading(true);
         const lapResults = await Promise.all(
           newLapsToFetch.map(async (num) => {
-          const d = drivers.find(drv => drv.DriverNumber === num);
-          if (!d) return { num, laps: [] };
-          const laps = await f1Service.getAllLaps(year, selectedMeeting?.meeting_name || '', selectedSession.session_name, d.Abbreviation);
+          const r = results.find(res => String(res.DriverNumber) === String(num));
+          if (!r) return { num, laps: [] };
+          const laps = await f1Service.getAllLaps(year, selectedMeeting?.meeting_name || '', selectedSession.session_name, r.Abbreviation);
             return { num, laps };
           })
         );
@@ -412,27 +397,17 @@ export default function App() {
 
         lapResults.forEach(({ num, laps }) => {
           updatedAvailable[num] = laps;
-          if (laps.length > 0) {
-          // Default to the lap with a valid LapTime, avoiding 'None' if possible
-          const validLaps = laps.filter(l => l.LapTime && l.LapTime !== 'None');
-          if (validLaps.length > 0) {
-            updatedSelected[num] = validLaps[validLaps.length - 1]; // or you can implement logic to find the fastest time string
-          } else {
-            updatedSelected[num] = laps[0];
-          }
-          } else {
-            updatedSelected[num] = null;
+          // Keep existing selected lap or set to null if no lap is selected yet.
+          if (updatedSelected[num] === undefined) {
+             updatedSelected[num] = null;
           }
         });
 
         setAvailableLaps(updatedAvailable);
         setSelectedLaps(updatedSelected);
-        // If all selected drivers have been processed (either have a lap or explicitly null)
-        // the next useEffect will trigger runComparison and clear isInitialLoad.
-        // But if no drivers have laps at all, we should clear it here just in case.
-        if (lapResults.every(r => r.laps.length === 0)) {
-          setIsInitialLoad(false);
-        }
+
+        // Ensure initial load state is cleared once lap data fetching is complete
+        setIsInitialLoad(false);
       } catch (err) {
         console.error('Error loading laps:', err);
         setError(
@@ -449,10 +424,10 @@ export default function App() {
     loadLapsForSelected();
   }, [selectedDrivers, selectedSession]);
 
-  // Auto-trigger comparison when all data is ready
+  // Auto-trigger comparison when all data is ready AND laps are selected
   useEffect(() => {
     const allLapsReady = selectedDrivers.length > 0 && 
-                        selectedDrivers.every(num => selectedLaps[num] !== undefined);
+                        selectedDrivers.every(num => selectedLaps[num] !== null && selectedLaps[num] !== undefined);
     
     let isCancelled = false;
 
@@ -463,14 +438,14 @@ export default function App() {
         setLoading(true);
         setError(null);
         try {
-          const results: any[] = [];
+          const resultsData: any[] = [];
           for (const driverNum of selectedDrivers) {
             if (isCancelled) return;
-            const driver = drivers.find(d => String(d.DriverNumber) === String(driverNum));
+            const driver = results.find(d => String(d.DriverNumber) === String(driverNum));
             const lap = selectedLaps[driverNum];
             
             if (!lap || !driver) {
-              results.push({ driver, telemetry: [] });
+              resultsData.push({ driver, telemetry: [] });
               continue;
             }
             
@@ -483,7 +458,7 @@ export default function App() {
             );
 
             if (isCancelled) return;
-            results.push({ driver, telemetry });
+            resultsData.push({ driver, telemetry });
             
             if (selectedDrivers.indexOf(driverNum) < selectedDrivers.length - 1) {
               await new Promise(resolve => setTimeout(resolve, 300));
@@ -493,17 +468,17 @@ export default function App() {
           if (isCancelled) return;
 
           const merged: any[] = [];
-          const maxDistance = Math.max(...results.map(r => 
+          const maxDistance = Math.max(...resultsData.map(r =>
             r.telemetry.length > 0 ? r.telemetry[r.telemetry.length - 1].distance || 0 : 0
           ));
 
           // Initialize indices for each driver to optimize the search
-          const indices = new Array(results.length).fill(0);
+          const indices = new Array(resultsData.length).fill(0);
 
           for (let dist = 0; dist <= maxDistance; dist += 20) { // Higher resolution
             const mergedPoint: any = { distance: dist };
             
-            results.forEach((res, idx) => {
+            resultsData.forEach((res, idx) => {
               if (!res.driver || res.telemetry.length < 2) return;
               
               const telemetry = res.telemetry;
@@ -567,7 +542,7 @@ export default function App() {
     return () => {
       isCancelled = true;
     };
-  }, [selectedLaps, selectedDrivers, selectedSession, drivers]);
+  }, [selectedLaps, selectedDrivers, selectedSession, results]);
 
   const handleDriverToggle = (driverNumber: string) => {
     setSelectedDrivers(prev => {
@@ -598,7 +573,7 @@ export default function App() {
       });
       
       const driverNames = selectedDrivers
-        .map(num => drivers.find(d => d.DriverNumber === num)?.Abbreviation)
+        .map(num => results.find(d => d.DriverNumber === num)?.Abbreviation)
         .filter(Boolean)
         .join('-');
       
@@ -715,7 +690,7 @@ export default function App() {
 
               {/* Driver Selection */}
               <AnimatePresence>
-                {selectedSession && drivers.length > 0 && (
+                {selectedSession && results.length > 0 && (
                   <motion.section 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -740,29 +715,34 @@ export default function App() {
                     </div>
                     
                     <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar pr-1">
-                      <div className="grid grid-cols-2 gap-1.5 auto-rows-fr">
-                        {drivers.map((d) => (
+                      <div className="flex flex-col gap-1 auto-rows-fr">
+                        {results.map((d) => (
                           <button
                             key={d.DriverNumber}
                             onClick={() => handleDriverToggle(d.DriverNumber)}
                             className={cn(
-                              "text-left px-2 py-1.5 text-[10px] transition-all flex flex-col justify-center gap-0.5 border relative overflow-hidden group rounded-sm",
+                              "text-left px-3 py-2 text-[10px] transition-all flex items-center justify-between border relative overflow-hidden group rounded-sm w-full",
                               selectedDrivers.includes(d.DriverNumber)
-                                ? "bg-f1-red text-white border-f1-red"
+                                ? "bg-f1-red/10 text-white border-f1-red"
                                 : "bg-dark-bg border-dark-border hover:border-f1-red/50"
                             )}
                           >
                             <div 
                               className="absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5" 
-                              style={{ backgroundColor: `#${d.team_colour || '888'}` }}
+                              style={{ backgroundColor: `#${d.TeamColor || '888'}` }}
                             />
-                            <div className="pl-1.5 flex justify-between items-start w-full">
-                              <span className="font-mono font-bold text-xs">{d.DriverNumber}</span>
-                              <span className={cn("font-mono text-[8px] px-1 rounded", selectedDrivers.includes(d.DriverNumber) ? "bg-white/20" : "bg-dark-surface")}>
+                            <div className="pl-2 flex items-center gap-3">
+                              <span className="font-mono font-bold text-xs w-4 text-center text-white/60">{d.Position}</span>
+                              <div className="flex flex-col">
+                                <span className="font-bold uppercase tracking-tight text-[11px]">{d.FullName}</span>
+                                <span className="font-mono text-[8px] opacity-60 uppercase">{d.TeamName}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                               <span className={cn("font-mono text-[9px] px-1.5 py-0.5 rounded", selectedDrivers.includes(d.DriverNumber) ? "bg-f1-red text-white" : "bg-dark-surface text-white/80")}>
                                 {d.Abbreviation}
                               </span>
                             </div>
-                            <span className="pl-1.5 truncate font-bold uppercase tracking-tight text-[9px]">{d.FullName ? d.FullName.split(' ').pop() : d.BroadcastName}</span>
                           </button>
                         ))}
                       </div>
@@ -784,7 +764,7 @@ export default function App() {
                     </div>
                     <div className="space-y-2">
                       {selectedDrivers.map(num => {
-                        const d = drivers.find(drv => drv.DriverNumber === num);
+                        const d = results.find(drv => drv.DriverNumber === num);
                         const laps = availableLaps[num] || [];
                         if (laps.length === 0) return null;
 
@@ -873,10 +853,10 @@ export default function App() {
                 <div className="flex items-stretch gap-3">
                   <div className="flex gap-2">
                     {selectedDrivers.map((num, idx) => {
-                      const d = drivers.find(drv => drv.DriverNumber === num);
+                      const d = results.find(drv => drv.DriverNumber === num);
                       const lap = selectedLaps[num];
                       const isDashed = selectedDrivers.slice(0, idx).some(prevNum => {
-                        const prevD = drivers.find(drv => drv.DriverNumber === prevNum);
+                        const prevD = results.find(drv => drv.DriverNumber === prevNum);
                         return prevD && d && prevD.TeamName === d.TeamName;
                       });
                       return (
@@ -885,8 +865,8 @@ export default function App() {
                             className="w-1 rounded-full" 
                             style={{ 
                               background: isDashed 
-                                ? `repeating-linear-gradient(to bottom, #${d?.team_colour || '888'}, #${d?.team_colour || '888'} 4px, transparent 4px, transparent 8px)`
-                                : `#${d?.team_colour || '888'}`
+                                ? `repeating-linear-gradient(to bottom, #${d?.TeamColor || '888'}, #${d?.TeamColor || '888'} 4px, transparent 4px, transparent 8px)`
+                                : `#${d?.TeamColor || '888'}`
                             }} 
                           />
                           <div className="flex flex-col justify-between">
@@ -979,7 +959,7 @@ export default function App() {
                         <TelemetryChart 
                           data={telemetryData} 
                           metric={selectedMetric} 
-                          drivers={drivers} 
+                          results={results}
                           selectedDrivers={selectedDrivers} 
                           height="100%" 
                           showXAxis={true} 
@@ -991,7 +971,7 @@ export default function App() {
                               <TelemetryChart 
                                 data={telemetryData} 
                                 metric={m} 
-                                drivers={drivers} 
+                                results={results}
                                 selectedDrivers={selectedDrivers} 
                                 height="100%" 
                                 showXAxis={idx === METRICS.length - 1} 
@@ -1067,10 +1047,10 @@ export default function App() {
             
             <div className="flex gap-8">
               {selectedDrivers.map((num, idx) => {
-                const d = drivers.find(drv => drv.DriverNumber === num);
+                const d = results.find(drv => drv.DriverNumber === num);
                 const lap = selectedLaps[num];
                 const isDashed = selectedDrivers.slice(0, idx).some(prevNum => {
-                  const prevD = drivers.find(drv => drv.DriverNumber === prevNum);
+                  const prevD = results.find(drv => drv.DriverNumber === prevNum);
                   return prevD && d && prevD.TeamName === d.TeamName;
                 });
                 return (
@@ -1080,8 +1060,8 @@ export default function App() {
                         className="w-2 h-8" 
                         style={{ 
                           background: isDashed 
-                            ? `repeating-linear-gradient(to bottom, #${d?.team_colour || '888'}, #${d?.team_colour || '888'} 6px, transparent 6px, transparent 12px)`
-                            : `#${d?.team_colour || '888'}`
+                            ? `repeating-linear-gradient(to bottom, #${d?.TeamColor || '888'}, #${d?.TeamColor || '888'} 6px, transparent 6px, transparent 12px)`
+                            : `#${d?.TeamColor || '888'}`
                         }} 
                       />
                       <div className="flex items-center gap-3">
@@ -1125,15 +1105,15 @@ export default function App() {
                   labelStyle={{ color: '#666', marginBottom: '4px' }}
                 />
                 {selectedDrivers.map((num, idx) => {
-                  const d = drivers.find(drv => drv.DriverNumber === num);
+                  const d = results.find(drv => drv.DriverNumber === num);
                   if (!d) return null;
                   const isDashed = selectedDrivers.slice(0, idx).some(prevNum => {
-                    const prevD = drivers.find(drv => drv.DriverNumber === prevNum);
+                    const prevD = results.find(drv => drv.DriverNumber === prevNum);
                     return prevD && d && prevD.TeamName === d.TeamName;
                   });
-                  // Assign some default colors if team_colour is missing from the new API
+                  // Assign some default colors if TeamColor is missing from the new API
                   const defaultColors = ['#FF1E1E', '#1E90FF', '#32CD32', '#FFA500', '#9370DB', '#00CED1'];
-                  const color = d.team_colour ? `#${d.team_colour}` : defaultColors[idx % defaultColors.length];
+                  const color = d.TeamColor ? `#${d.TeamColor}` : defaultColors[idx % defaultColors.length];
                   return (
                     <Line
                       key={`export-line-${num}`}
