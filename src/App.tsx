@@ -666,45 +666,39 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Header */}
-      <header className="border-b border-dark-border bg-dark-surface/80 backdrop-blur-md sticky top-0 z-50 p-4 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <img 
-            src="https://storage.googleapis.com/lap-check-images/lap_logo.png?v=3" 
-            alt="Lap-Check Logo" 
-            className="h-10 w-auto"
-            referrerPolicy="no-referrer"
-          />
-        </div>
-        <div className="flex items-center gap-2 lg:gap-4">
-          <div className="w-24 lg:w-32">
-            <CustomDropdown
-              label="Year"
-              icon={<Calendar className="w-3 h-3 text-f1-red" />}
-              options={YEARS}
-              value={year}
-              onChange={setYear}
-              getLabel={(y) => y.toString()}
-              getKey={(y) => y}
-            />
-          </div>
-          {loading && <Loader2 className="w-5 h-5 animate-spin text-f1-red" />}
-        </div>
-      </header>
-
       <main className="flex flex-col-reverse lg:grid lg:grid-cols-[380px_1fr] flex-1 lg:overflow-hidden">
         {/* Sidebar Controls */}
-        <aside className="border-t lg:border-t-0 lg:border-r border-dark-border lg:h-full carbon-pattern overflow-hidden">
-          <div className="p-3 lg:p-4 h-full flex flex-col">
+        <aside className="border-t lg:border-t-0 lg:border-r border-dark-border lg:h-full carbon-pattern overflow-y-auto no-scrollbar relative flex flex-col">
+          <div className="p-3 lg:p-4 h-full flex flex-col relative z-10">
+            {/* Logo area */}
+            <div className="flex items-center justify-between mb-4">
+              <img
+                src="https://storage.googleapis.com/lap-check-images/lap_logo.png?v=3"
+                alt="Lap-Check Logo"
+                className="h-10 w-auto"
+                referrerPolicy="no-referrer"
+              />
+              {loading && <Loader2 className="w-5 h-5 animate-spin text-f1-red" />}
+            </div>
+
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="flex-1 flex flex-col space-y-3 bg-dark-surface/40 p-3 rounded-xl lg:bg-transparent lg:p-0 lg:rounded-none border border-dark-border lg:border-0 mb-2 lg:mb-0 min-h-0"
             >
-              {/* Step 1 & 2: Meeting & Session */}
               <div className="space-y-3">
                 <CustomDropdown
-                  label="01. Grand Prix"
+                  label="01. Year"
+                  icon={<Calendar className="w-3 h-3 text-f1-red" />}
+                  options={YEARS}
+                  value={year}
+                  onChange={setYear}
+                  getLabel={(y) => y.toString()}
+                  getKey={(y) => y}
+                />
+
+                <CustomDropdown
+                  label="02. Grand Prix"
                   icon={<MapPin className="w-3 h-3 text-f1-red" />}
                   options={meetings}
                   value={selectedMeeting}
@@ -722,7 +716,7 @@ export default function App() {
                       exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
                     >
                       <CustomDropdown
-                        label="02. Session"
+                        label="03. Session"
                         icon={<Calendar className="w-3 h-3 text-f1-red" />}
                         options={sessions}
                         value={selectedSession}
@@ -742,12 +736,12 @@ export default function App() {
                   <motion.section 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="pt-6 border-t border-dark-border flex-1 flex flex-col"
+                    className="pt-4 border-t border-dark-border"
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em]">
                         <Users className="w-3 h-3 text-f1-red" />
-                        <span>03. Drivers ({selectedDrivers.length}/2)</span>
+                        <span>04. Drivers ({selectedDrivers.length}/2)</span>
                       </div>
                       {selectedDrivers.length > 0 && (
                         <button 
@@ -762,43 +756,33 @@ export default function App() {
                       )}
                     </div>
                     
-                    <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar pr-1">
-                      <div className="flex flex-col gap-1 auto-rows-fr">
-                        {results.map((d) => (
-                          <button
-                            key={d.DriverNumber}
-                            onClick={() => handleDriverToggle(d.DriverNumber)}
-                            className={cn(
-                              "text-left px-3 py-2 text-[10px] transition-all flex items-center justify-between border relative overflow-hidden group rounded-sm w-full",
-                              selectedDrivers.includes(d.DriverNumber)
-                                ? "bg-f1-red/10 text-white border-f1-red"
-                                : "bg-dark-bg border-dark-border hover:border-f1-red/50"
-                            )}
-                          >
-                            <div 
-                              className="absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5" 
-                              style={{ backgroundColor: `#${d.TeamColor || '888'}` }}
-                            />
-                            <div className="pl-2 flex items-center gap-3">
-                              <span className="font-mono font-bold text-xs w-4 text-center text-white/60">{d.Position}</span>
-                              <div className="flex flex-col">
-                                <span className="font-bold uppercase tracking-tight text-[11px]">{d.FullName}</span>
-                                <span className="font-mono text-[8px] opacity-60 uppercase">{d.TeamName}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                               <span className={cn("font-mono text-[9px] px-1.5 py-0.5 rounded", selectedDrivers.includes(d.DriverNumber) ? "bg-f1-red text-white" : "bg-dark-surface text-white/80")}>
-                                {d.Abbreviation}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {results.map((d) => (
+                        <button
+                          key={d.DriverNumber}
+                          onClick={() => handleDriverToggle(d.DriverNumber)}
+                          className={cn(
+                            "relative overflow-hidden group flex items-center justify-between px-2 py-1.5 border rounded-sm transition-all",
+                            selectedDrivers.includes(d.DriverNumber)
+                              ? "bg-f1-red/10 text-white border-f1-red"
+                              : "bg-dark-bg border-dark-border hover:border-f1-red/50"
+                          )}
+                        >
+                          <div
+                            className="absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5"
+                            style={{ backgroundColor: `#${d.TeamColor || '888'}` }}
+                          />
+                          <div className="pl-1.5 flex items-center gap-2">
+                            <span className="font-mono font-bold text-[10px] w-3 text-center text-white/40">{d.Position}</span>
+                            <span className="font-black uppercase tracking-tighter text-xs">{d.Abbreviation}</span>
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   </motion.section>
                 )}
 
-                {/* 04. Lap Selection */}
+                {/* 05. Lap Selection */}
                 {selectedDrivers.length > 0 && (
                   <motion.section
                     key="sidebar-lap-selection"
@@ -808,7 +792,7 @@ export default function App() {
                   >
                     <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em] mb-3">
                       <Timer className="w-3 h-3 text-f1-red" />
-                      <span>04. Lap Selection</span>
+                      <span>05. Lap Selection</span>
                     </div>
                     <div className="space-y-2">
                       {selectedDrivers.map(num => {
