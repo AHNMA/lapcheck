@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import * as echarts from 'echarts';
 import { motion, AnimatePresence } from 'motion/react';
@@ -24,6 +24,7 @@ import {
   X
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import { f1Service, Meeting, Session, F1Result, TelemetryPoint, Lap } from './services/f1Service';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -32,7 +33,6 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Verbinde alle ECharts-Instanzen für synchrone Tooltips und Zoom
 echarts.connect('telemetryGroup');
 
 const YEARS = [2026, 2025, 2024, 2023];
@@ -81,9 +81,7 @@ function CustomDropdown<T>({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) setIsOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -150,12 +148,10 @@ interface TelemetryChartProps {
   showXAxis?: boolean;
 }
 
-// React.memo verhindert unnötiges Neu-Rendern, wenn sich z.B. nur ein Ladespinner dreht
 const TelemetryChart = React.memo(function TelemetryChart({
   data, metric, results, selectedDrivers, height = 200, showXAxis = false
 }: TelemetryChartProps) {
 
-  // Daten in das hochperformante ECharts [x, y] Format umwandeln
   const seriesData = React.useMemo(() => {
     return selectedDrivers.map((num, idx) => {
       const d = results.find(drv => drv.DriverNumber === num);
@@ -185,19 +181,13 @@ const TelemetryChart = React.memo(function TelemetryChart({
           type: isDashed ? 'dashed' : 'solid',
           width: 2
         },
-        animation: false // Verhindert Ruckeln beim Live-Update
+        animation: false
       };
     }).filter(Boolean);
   }, [data, metric, results, selectedDrivers]);
 
   const option = {
-    grid: {
-      top: 20,
-      right: 20,
-      bottom: showXAxis ? 30 : 10,
-      left: 60,
-      containLabel: false
-    },
+    grid: { top: 20, right: 20, bottom: showXAxis ? 30 : 10, left: 60, containLabel: false },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross', crossStyle: { color: '#FF1E1E' } },
@@ -206,35 +196,17 @@ const TelemetryChart = React.memo(function TelemetryChart({
       textStyle: { color: '#fff', fontFamily: 'monospace', fontSize: 10 },
       valueFormatter: (value: number) => value !== undefined && value !== null ? value.toFixed(metric === 'gear' ? 0 : 1) : '-'
     },
-    legend: {
-      show: true,
-      top: 0,
-      right: 20,
-      textStyle: { color: '#ffffff90', fontFamily: 'monospace', fontSize: 10 },
-      icon: 'circle'
-    },
-    dataZoom: [
-      { type: 'inside', xAxisIndex: 0, zoomOnMouseWheel: true, moveOnMouseMove: true }
-    ],
+    legend: { show: true, top: 0, right: 20, textStyle: { color: '#ffffff90', fontFamily: 'monospace', fontSize: 10 }, icon: 'circle' },
+    dataZoom: [{ type: 'inside', xAxisIndex: 0, zoomOnMouseWheel: true, moveOnMouseMove: true }],
     xAxis: {
-      type: 'value',
-      min: 'dataMin',
-      max: 'dataMax',
-      show: showXAxis,
+      type: 'value', min: 'dataMin', max: 'dataMax', show: showXAxis,
       axisLabel: { color: '#666', fontFamily: 'monospace', fontSize: 9 },
-      splitLine: { show: false },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      name: showXAxis ? 'Distance (m)' : '',
-      nameLocation: 'middle',
-      nameGap: 20,
+      splitLine: { show: false }, axisLine: { show: false }, axisTick: { show: false },
+      name: showXAxis ? 'Distance (m)' : '', nameLocation: 'middle', nameGap: 20,
       nameTextStyle: { color: '#444', fontFamily: 'monospace', fontSize: 9 }
     },
     yAxis: {
-      type: 'value',
-      name: METRIC_LABELS[metric] || metric,
-      nameLocation: 'middle',
-      nameGap: 40,
+      type: 'value', name: METRIC_LABELS[metric] || metric, nameLocation: 'middle', nameGap: 40,
       nameTextStyle: { color: '#444', fontFamily: 'monospace', fontSize: 9 },
       min: metric === 'gear' ? 0 : (metric === 'throttle' || metric === 'brake' ? 0 : 'dataMin'),
       max: metric === 'gear' ? 8 : (metric === 'throttle' || metric === 'brake' ? 100 : 'dataMax'),
@@ -246,13 +218,7 @@ const TelemetryChart = React.memo(function TelemetryChart({
 
   return (
     <div style={{ height: typeof height === 'number' ? `${height}px` : height, width: '100%' }}>
-      <ReactECharts
-        option={option}
-        style={{ height: '100%', width: '100%' }}
-        group="telemetryGroup"
-        opts={{ renderer: 'canvas' }}
-        notMerge={true}
-      />
+      <ReactECharts option={option} style={{ height: '100%', width: '100%' }} group="telemetryGroup" opts={{ renderer: 'canvas' }} notMerge={true} />
     </div>
   );
 }, (prevProps, nextProps) => {
@@ -264,213 +230,140 @@ const TelemetryChart = React.memo(function TelemetryChart({
 
 export default function App() {
   const [year, setYear] = useState(2026);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
-  const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
-  const [results, setResults] = useState<F1Result[]>([]);
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
-  const [availableLaps, setAvailableLaps] = useState<Record<string, Lap[]>>({});
   const [selectedLaps, setSelectedLaps] = useState<Record<string, Lap | null>>({});
-  const [telemetryData, setTelemetryData] = useState<any[]>([]);
+
   const [selectedMetric, setSelectedMetric] = useState('speed');
   const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
-  const [loading, setLoading] = useState(false);
-  const [isLoadingDelayed, setIsLoadingDelayed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [manualError, setManualError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
+  // --- REACT QUERY DATA FETCHING ---
+
+  const { data: meetings = [], isLoading: loadingMeetings, error: errorMeetings } = useQuery({
+    queryKey: ['meetings', year],
+    queryFn: () => f1Service.getMeetings(year)
+  });
+
+  const { data: sessions = [], isLoading: loadingSessions, error: errorSessions } = useQuery({
+    queryKey: ['sessions', year, selectedMeeting?.meeting_name],
+    queryFn: () => f1Service.getSessions(year, selectedMeeting!.meeting_name),
+    enabled: !!selectedMeeting
+  });
+
+  const { data: results = [], isLoading: loadingResults, error: errorResults } = useQuery({
+    queryKey: ['results', year, selectedMeeting?.meeting_name, selectedSession?.session_name],
+    queryFn: async () => {
+      const res = await f1Service.getResults(year, selectedMeeting!.meeting_name, selectedSession!.session_name);
+      return res.sort((a, b) => a.Position - b.Position);
+    },
+    enabled: !!selectedSession
+  });
+
+  const lapQueries = useQueries({
+    queries: selectedDrivers.map(num => {
+      const driver = results.find(r => r.DriverNumber === num);
+      return {
+        queryKey: ['laps', year, selectedMeeting?.meeting_name, selectedSession?.session_name, num],
+        queryFn: () => f1Service.getAllLaps(year, selectedMeeting!.meeting_name, selectedSession!.session_name, driver!.Abbreviation),
+        enabled: !!selectedSession && !!driver
+      };
+    })
+  });
+
+  const availableLaps = useMemo(() => {
+    const lapsObj: Record<string, Lap[]> = {};
+    selectedDrivers.forEach((num, index) => {
+      if (lapQueries[index].data) lapsObj[num] = lapQueries[index].data as Lap[];
+    });
+    return lapsObj;
+  }, [selectedDrivers, lapQueries]);
+
+  const allLapsReady = selectedDrivers.length > 0 && selectedDrivers.every(num => selectedLaps[num] !== null && selectedLaps[num] !== undefined);
+
+  const { data: telemetryData = [], isFetching: loadingTelemetry, error: errorTelemetry } = useQuery({
+    queryKey: ['telemetry', year, selectedMeeting?.meeting_name, selectedSession?.session_name, selectedDrivers.join(','), Object.values(selectedLaps).map(l => (l as Lap | null)?.LapNumber).join(',')],
+    queryFn: () => new Promise<any[]>((resolve, reject) => {
+      const worker = new Worker(new URL('./workers/telemetryWorker.ts', import.meta.url), { type: 'module' });
+      worker.onmessage = (e) => {
+        if (e.data.type === 'SUCCESS') resolve(e.data.data);
+        else reject(new Error(e.data.error));
+        worker.terminate();
+      };
+      worker.onerror = () => {
+        reject(new Error('Worker execution failed'));
+        worker.terminate();
+      };
+      worker.postMessage({
+        year,
+        meetingName: selectedMeeting!.meeting_name,
+        sessionName: selectedSession!.session_name,
+        drivers: selectedDrivers,
+        results,
+        selectedLaps,
+        metrics: METRICS
+      });
+    }),
+    enabled: allLapsReady
+  });
+
+  // --- AUTO-SELECTIONS & STATE RESETS ---
+
+  useEffect(() => {
+    if (meetings.length > 0 && (!selectedMeeting || !meetings.find(m => m.round === selectedMeeting.round))) {
+      setSelectedMeeting(meetings[0]);
+    } else if (meetings.length === 0) {
+      setSelectedMeeting(null);
+    }
+  }, [meetings]);
+
+  useEffect(() => {
+    if (sessions.length > 0 && (!selectedSession || !sessions.find(s => s.session_identifier === selectedSession.session_identifier))) {
+      setSelectedSession(sessions[sessions.length - 1]);
+    } else if (sessions.length === 0) {
+      setSelectedSession(null);
+    }
+  }, [sessions]);
+
+  useEffect(() => {
+    setSelectedDrivers([]);
+    setSelectedLaps({});
+  }, [results]);
+
+  const handleDriverToggle = (driverNumber: string) => {
+    setSelectedDrivers(prev => {
+      if (prev.includes(driverNumber)) {
+        setSelectedLaps(l => { const c = {...l}; delete c[driverNumber]; return c; });
+        return prev.filter(id => id !== driverNumber);
+      }
+      if (prev.length >= 2) {
+        setSelectedLaps(l => { const c = {...l}; delete c[prev[0]]; c[driverNumber] = null; return c; });
+        return [prev[1], driverNumber];
+      }
+      setSelectedLaps(l => ({ ...l, [driverNumber]: null }));
+      return [...prev, driverNumber];
+    });
+  };
+
+  // --- UI STATES (Loading & Errors) ---
+
+  const isAnyLoading = loadingMeetings || loadingSessions || loadingResults || lapQueries.some(q => q.isLoading) || loadingTelemetry;
+  const queryError = errorMeetings || errorSessions || errorResults || errorTelemetry || lapQueries.find(q => q.error)?.error;
+  const displayError = manualError || (queryError ? (queryError as Error).message : null);
+
+  const [isLoadingDelayed, setIsLoadingDelayed] = useState(false);
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
-    if (loading || isInitialLoad) {
+    if (isAnyLoading) {
       timeoutId = setTimeout(() => { setIsLoadingDelayed(true); }, 3000);
     } else {
       setIsLoadingDelayed(false);
     }
     return () => clearTimeout(timeoutId);
-  }, [loading, isInitialLoad]);
-
-  useEffect(() => {
-    const loadMeetings = async () => {
-      try {
-        setLoading(true);
-        const data = await f1Service.getMeetings(year);
-        const sorted = data.sort((a, b) => a.round - b.round);
-        setMeetings(sorted);
-        
-        if (sorted.length > 0) {
-          setSelectedMeeting(sorted[0]);
-          setError(null);
-        } else {
-          setSelectedMeeting(null);
-          setError(`Für ${year} liegen keine Daten vor. Möchtest du die Daten von 2023 oder 2026 sehen?`);
-          setIsInitialLoad(false);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        setIsInitialLoad(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadMeetings();
-  }, [year]);
-
-  useEffect(() => {
-    if (!selectedMeeting) return;
-    const loadSessions = async () => {
-      try {
-        setLoading(true);
-        const sessionsData = await f1Service.getSessions(year, selectedMeeting.meeting_name);
-        setSessions(sessionsData);
-        
-        if (sessionsData.length > 0) {
-          setSelectedSession(sessionsData[sessionsData.length - 1]);
-        } else {
-          setSelectedSession(null);
-          setResults([]);
-          setSelectedDrivers([]);
-          setAvailableLaps({});
-          setSelectedLaps({});
-          setTelemetryData([]);
-          setIsInitialLoad(false);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        setIsInitialLoad(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadSessions();
-  }, [selectedMeeting]);
-
-  useEffect(() => {
-    if (!selectedSession) return;
-    const loadResults = async () => {
-      try {
-        setLoading(true);
-        const resultsData = await f1Service.getResults(year, selectedMeeting.meeting_name, selectedSession.session_name);
-        setResults(resultsData.sort((a, b) => a.Position - b.Position));
-        setSelectedDrivers([]);
-        setTelemetryData([]);
-        setAvailableLaps({});
-        setSelectedLaps({});
-        setIsInitialLoad(false);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        setIsInitialLoad(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadResults();
-  }, [selectedSession]);
-
-  useEffect(() => {
-    const loadLapsForSelected = async () => {
-      if (!selectedSession) return;
-      const newLapsToFetch = selectedDrivers.filter(num => !availableLaps[num]);
-      if (newLapsToFetch.length === 0) return;
-
-      try {
-        setLoading(true);
-        const lapResults = await Promise.all(
-          newLapsToFetch.map(async (num) => {
-            const r = results.find(res => String(res.DriverNumber) === String(num));
-            if (!r) return { num, laps: [] };
-            const laps = await f1Service.getAllLaps(year, selectedMeeting?.meeting_name || '', selectedSession.session_name, r.Abbreviation);
-            return { num, laps };
-          })
-        );
-
-        const updatedAvailable = { ...availableLaps };
-        const updatedSelected = { ...selectedLaps };
-
-        lapResults.forEach(({ num, laps }) => {
-          updatedAvailable[num] = laps;
-          if (updatedSelected[num] === undefined) updatedSelected[num] = null;
-        });
-
-        setAvailableLaps(updatedAvailable);
-        setSelectedLaps(updatedSelected);
-        setIsInitialLoad(false);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-        setIsInitialLoad(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadLapsForSelected();
-  }, [selectedDrivers, selectedSession]);
-
-  useEffect(() => {
-    const allLapsReady = selectedDrivers.length > 0 && 
-                        selectedDrivers.every(num => selectedLaps[num] !== null && selectedLaps[num] !== undefined);
-    let isCancelled = false;
-
-    if (allLapsReady && !loading) {
-      const runComparison = async () => {
-        if (selectedDrivers.length < 1 || !selectedSession) return;
-        setLoading(true);
-        setError(null);
-        try {
-          const workerData = await new Promise((resolve, reject) => {
-            const worker = new Worker(new URL('./workers/telemetryWorker.ts', import.meta.url), { type: 'module' });
-            
-            worker.onmessage = (e) => {
-              if (e.data.type === 'SUCCESS') {
-                resolve(e.data.data);
-              } else {
-                reject(new Error(e.data.error));
-              }
-              worker.terminate();
-            };
-
-            worker.onerror = (err) => {
-              reject(new Error('Worker execution failed'));
-              worker.terminate();
-            };
-
-            worker.postMessage({
-              year,
-              meetingName: selectedMeeting?.meeting_name || '',
-              sessionName: selectedSession.session_name,
-              drivers: selectedDrivers,
-              results,
-              selectedLaps,
-              metrics: METRICS
-            });
-          });
-
-          if (isCancelled) return;
-
-          setTelemetryData(workerData as any[]);
-          setIsInitialLoad(false);
-        } catch (err) {
-          if (!isCancelled) {
-            setError(`Telemetry data unavailable: ${err instanceof Error ? err.message : String(err)}`);
-            setIsInitialLoad(false);
-          }
-        } finally {
-          if (!isCancelled) setLoading(false);
-        }
-      };
-      runComparison();
-    }
-    return () => { isCancelled = true; };
-  }, [selectedLaps, selectedDrivers, selectedSession, results]);
-
-  const handleDriverToggle = (driverNumber: string) => {
-    setSelectedDrivers(prev => {
-      if (prev.includes(driverNumber)) return prev.filter(id => id !== driverNumber);
-      if (prev.length >= 2) return [prev[1], driverNumber];
-      return [...prev, driverNumber];
-    });
-  };
+  }, [isAnyLoading]);
 
   const handleExportImage = async () => {
     if (!selectedSession) return;
@@ -488,7 +381,7 @@ export default function App() {
       link.href = dataUrl;
       link.click();
     } catch (err) {
-      setError('Failed to export image');
+      setManualError('Failed to export image');
     } finally {
       setIsExporting(false);
     }
@@ -497,7 +390,7 @@ export default function App() {
   return (
     <div className="min-h-screen lg:h-screen lg:w-screen bg-dark-bg text-white font-sans selection:bg-f1-red selection:text-white lg:overflow-hidden flex flex-col relative">
       <AnimatePresence>
-        {isInitialLoad && (
+        {(!meetings.length && loadingMeetings) && (
           <motion.div initial={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[999] bg-dark-bg flex flex-col items-center justify-center">
             <div className="flex flex-col items-center gap-6">
               <div className="relative">
@@ -508,9 +401,7 @@ export default function App() {
               </div>
               <div className="text-center space-y-2">
                 <h2 className="text-2xl font-black uppercase italic tracking-tighter">Initializing</h2>
-                <p className="text-xs font-mono uppercase tracking-[0.3em] opacity-50">
-                  {isLoadingDelayed ? "Live-Download läuft (kann bis zu 2 Minuten dauern)..." : "Loading Telemetry Data..."}
-                </p>
+                <p className="text-xs font-mono uppercase tracking-[0.3em] opacity-50">Loading API Data...</p>
               </div>
             </div>
           </motion.div>
@@ -518,14 +409,16 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {error && (
+        {displayError && (
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed top-4 left-1/2 -translate-x-1/2 z-[1000] bg-f1-red text-white px-6 py-4 rounded-md shadow-2xl border border-white/20 flex items-center gap-4 max-w-xl w-full">
             <Activity className="w-6 h-6 shrink-0" />
             <div className="flex-1">
               <h3 className="font-bold uppercase tracking-wider mb-1">Error</h3>
-              <p className="text-sm opacity-90">{error}</p>
+              <p className="text-sm opacity-90">{displayError}</p>
             </div>
-            <button onClick={() => setError(null)} className="p-2 hover:bg-black/20 rounded-sm transition-colors"><X className="w-5 h-5" /></button>
+            {manualError && (
+              <button onClick={() => setManualError(null)} className="p-2 hover:bg-black/20 rounded-sm transition-colors"><X className="w-5 h-5" /></button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -535,17 +428,17 @@ export default function App() {
           <div className="p-3 lg:p-4 h-full flex flex-col relative z-10">
             <div className="flex items-center justify-between mb-4">
               <img src="https://storage.googleapis.com/lap-check-images/lap_logo.png?v=3" alt="Lap-Check Logo" className="h-10 w-auto" referrerPolicy="no-referrer" />
-              {loading && <Loader2 className="w-5 h-5 animate-spin text-f1-red" />}
+              {isAnyLoading && <Loader2 className="w-5 h-5 animate-spin text-f1-red" />}
             </div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col space-y-3 bg-dark-surface/40 p-3 rounded-xl lg:bg-transparent lg:p-0 lg:rounded-none border border-dark-border lg:border-0 mb-2 lg:mb-0 min-h-0">
               <div className="space-y-3">
-                <CustomDropdown label="01. Year" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={YEARS} value={year} onChange={setYear} getLabel={(y) => y.toString()} getKey={(y) => y} />
-                <CustomDropdown label="02. Grand Prix" icon={<MapPin className="w-3 h-3 text-f1-red" />} options={meetings} value={selectedMeeting} onChange={setSelectedMeeting} getLabel={(m) => m.meeting_name} getKey={(m) => m.round} placeholder="Select Grand Prix" />
+                <CustomDropdown label="01. Year" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={YEARS} value={year} onChange={setYear} getLabel={(y) => y.toString()} getKey={(y) => y} disabled={loadingMeetings} />
+                <CustomDropdown label="02. Grand Prix" icon={<MapPin className="w-3 h-3 text-f1-red" />} options={meetings} value={selectedMeeting} onChange={setSelectedMeeting} getLabel={(m) => m.meeting_name} getKey={(m) => m.round} placeholder="Select Grand Prix" disabled={loadingSessions} />
                 <AnimatePresence>
                   {selectedMeeting && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                      <CustomDropdown label="03. Session" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={sessions} value={selectedSession} onChange={setSelectedSession} getLabel={(s) => s.session_name} getKey={(s) => s.session_identifier} placeholder="Select Session" />
+                      <CustomDropdown label="03. Session" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={sessions} value={selectedSession} onChange={setSelectedSession} getLabel={(s) => s.session_name} getKey={(s) => s.session_identifier} placeholder="Select Session" disabled={loadingResults} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -559,7 +452,7 @@ export default function App() {
                         <Users className="w-3 h-3 text-f1-red" />
                         <span>04. Drivers ({selectedDrivers.length}/2)</span>
                       </div>
-                      {selectedDrivers.length > 0 && <button onClick={() => { setSelectedDrivers([]); setTelemetryData([]); }} className="text-[10px] font-mono uppercase text-f1-red hover:underline">Reset</button>}
+                      {selectedDrivers.length > 0 && <button onClick={() => { setSelectedDrivers([]); setSelectedLaps({}); }} className="text-[10px] font-mono uppercase text-f1-red hover:underline">Reset</button>}
                     </div>
                     
                     <div className="grid grid-cols-2 gap-1.5">
@@ -583,10 +476,14 @@ export default function App() {
                       <span>05. Lap Selection</span>
                     </div>
                     <div className="space-y-2">
-                      {selectedDrivers.map(num => {
+                      {selectedDrivers.map((num, idx) => {
                         const d = results.find(drv => drv.DriverNumber === num);
                         const laps = availableLaps[num] || [];
+                        const isLoadingLaps = lapQueries[idx]?.isLoading;
+
+                        if (isLoadingLaps) return <div key={num} className="text-xs text-center opacity-50 font-mono py-2">Loading laps...</div>;
                         if (laps.length === 0) return null;
+
                         return (
                           <div key={`sidebar-lap-${num}`} className="bg-dark-bg border border-dark-border p-2 rounded-sm">
                             <CustomDropdown label={`LAP FOR ${d?.Abbreviation}`} icon={<Timer className="w-3 h-3 text-f1-red" />} options={laps} value={selectedLaps[num] || null} onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))} getLabel={(l) => `Lap ${l.LapNumber} (${formatLapTime(l.LapTime)}) [${l.Compound}]`} getKey={(l) => l.LapNumber} maxItems={5} />
@@ -671,7 +568,7 @@ export default function App() {
                 </div>
 
                 <AnimatePresence mode="wait">
-                  {!loading && telemetryData.length > 0 && (
+                  {!isAnyLoading && telemetryData.length > 0 && (
                     <motion.div key={`${viewMode}-${selectedMetric}-${JSON.stringify(selectedLaps)}-${JSON.stringify(selectedDrivers)}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0">
                       {viewMode === 'single' ? (
                         <TelemetryChart data={telemetryData} metric={selectedMetric} results={results} selectedDrivers={selectedDrivers} height="100%" showXAxis={true} />
@@ -693,7 +590,9 @@ export default function App() {
               <motion.div key="loading-telemetry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 min-h-[300px] lg:min-h-0 flex items-center justify-center">
                 <div className="text-center space-y-4">
                   <div className="inline-block p-4 border border-dark-border rounded-full animate-pulse"><Timer className="w-8 h-8 text-f1-red" /></div>
-                  <p className="text-xs font-mono uppercase tracking-[0.3em] opacity-50 max-w-md mx-auto text-center">Loading Telemetry Data...</p>
+                  <p className="text-xs font-mono uppercase tracking-[0.3em] opacity-50 max-w-md mx-auto text-center">
+                    {isLoadingDelayed ? "Live-Download läuft (kann bis zu 2 Minuten dauern)..." : "Loading Telemetry Data..."}
+                  </p>
                 </div>
               </motion.div>
             )}
