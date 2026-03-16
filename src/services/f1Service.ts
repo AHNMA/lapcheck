@@ -5,11 +5,21 @@
 
 const BASE_URL = 'http://178.104.33.41:8000';
 export const DEFAULT_LIMIT = 500;
+const TIMEOUT_MS = 150000; // 150 seconds
 
 async function fetchData(url: string): Promise<Response> {
-  return fetch(url);
-}
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
 
 export interface Driver {
   DriverNumber: string;
@@ -26,6 +36,25 @@ export interface Team {
   TeamId: string;
   TeamName: string;
   TeamColor: string;
+}
+
+export interface F1Result {
+  DriverNumber: string;
+  BroadcastName: string;
+  Abbreviation: string;
+  TeamName: string;
+  TeamColor: string;
+  FirstName: string;
+  LastName: string;
+  FullName: string;
+  Position: number;
+  GridPosition: number;
+  Q1?: string;
+  Q2?: string;
+  Q3?: string;
+  Time?: string;
+  Status: string;
+  Points: number;
 }
 
 export interface Lap {
@@ -81,25 +110,15 @@ export const f1Service = {
     try {
       const res = await fetchData(`${BASE_URL}/meetings/${year}`);
       if (res.status === 404) return [];
+      if (res.status === 429) {
+        throw new Error('Live-Datenlimit erreicht. Bitte versuche es in einer Stunde erneut oder wähle ein Rennen aus dem Archiv (2023-2025).');
+      }
       if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
       const data = await res.json();
       return data.meetings || [];
     } catch (err) {
       console.error('Meetings fetch error:', err);
-      return [];
-    }
-  },
-
-  async getTeams(year: number, race: string, session: string): Promise<Team[]> {
-    try {
-      const res = await fetchData(`${BASE_URL}/teams/${year}/${encodeURIComponent(race)}/${encodeURIComponent(session)}`);
-      if (res.status === 404) return [];
-      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-      const data = await res.json();
-      return data.teams || [];
-    } catch (err) {
-      console.error('Teams fetch error:', err);
-      return [];
+      throw err;
     }
   },
 
@@ -107,25 +126,31 @@ export const f1Service = {
     try {
       const res = await fetchData(`${BASE_URL}/sessions/${year}/${encodeURIComponent(race)}`);
       if (res.status === 404) return [];
+      if (res.status === 429) {
+        throw new Error('Live-Datenlimit erreicht. Bitte versuche es in einer Stunde erneut oder wähle ein Rennen aus dem Archiv (2023-2025).');
+      }
       if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
       const data = await res.json();
       return data.sessions || [];
     } catch (err) {
       console.error('Sessions fetch error:', err);
-      return [];
+      throw err;
     }
   },
 
-  async getDrivers(year: number, race: string, session: string): Promise<Driver[]> {
+  async getResults(year: number, race: string, session: string): Promise<F1Result[]> {
     try {
-      const res = await fetchData(`${BASE_URL}/drivers/${year}/${encodeURIComponent(race)}/${encodeURIComponent(session)}`);
+      const res = await fetchData(`${BASE_URL}/results/${year}/${encodeURIComponent(race)}/${encodeURIComponent(session)}`);
       if (res.status === 404) return [];
+      if (res.status === 429) {
+        throw new Error('Live-Datenlimit erreicht. Bitte versuche es in einer Stunde erneut oder wähle ein Rennen aus dem Archiv (2023-2025).');
+      }
       if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
       const data = await res.json();
-      return data.drivers || [];
+      return data.results || [];
     } catch (err) {
-      console.error('Drivers fetch error:', err);
-      return [];
+      console.error('Results fetch error:', err);
+      throw err;
     }
   },
 
@@ -134,12 +159,15 @@ export const f1Service = {
     try {
       const res = await fetchData(url);
       if (res.status === 404) return [];
+      if (res.status === 429) {
+        throw new Error('Live-Datenlimit erreicht. Bitte versuche es in einer Stunde erneut oder wähle ein Rennen aus dem Archiv (2023-2025).');
+      }
       if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
       const data = await res.json();
       return data.laps || [];
     } catch (err) {
       console.error('Laps fetch error:', err);
-      return [];
+      throw err;
     }
   },
 
@@ -152,6 +180,9 @@ export const f1Service = {
     try {
       const res = await fetchData(url);
       if (res.status === 404) return [];
+      if (res.status === 429) {
+        throw new Error('Live-Datenlimit erreicht. Bitte versuche es in einer Stunde erneut oder wähle ein Rennen aus dem Archiv (2023-2025).');
+      }
       if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
       const data: TelemetryResponse = await res.json();
 
