@@ -191,7 +191,13 @@ function TelemetryChart({ data, metric, results, selectedDrivers, height = 200, 
             tick={{ fontSize: 9, fontFamily: 'monospace', fill: '#666' }}
             stroke="#1A1B1E"
             axisLine={false}
-            domain={metric === 'gear' ? [0, 8] : metric === 'throttle' || metric === 'brake' ? [0, 100] : ['auto', 'auto']}
+            domain={
+              metric === 'gear' ? [0, 8] :
+              metric === 'throttle' || metric === 'brake' ? [0, 100] :
+              metric === 'speed' ? [0, 400] :
+              metric === 'rpm' ? [0, 15000] :
+              ['auto', 'auto']
+            }
             width={40}
             label={{ value: METRIC_LABELS[metric] || metric, angle: -90, position: 'insideLeft', offset: 10, fill: '#444', fontSize: 9, fontFamily: 'monospace' }}
           />
@@ -239,7 +245,7 @@ function TelemetryChart({ data, metric, results, selectedDrivers, height = 200, 
                 dot={false}
                 activeDot={{ r: 3, strokeWidth: 0 }}
                 isAnimationActive={false}
-                connectNulls={false}
+                  connectNulls={true}
               />
             );
           })}
@@ -263,10 +269,24 @@ export default function App() {
   const [selectedMetric, setSelectedMetric] = useState('speed');
   const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
   const [loading, setLoading] = useState(false);
+  const [isLoadingDelayed, setIsLoadingDelayed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
+
+  // Timer for loading state
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    if (loading || isInitialLoad) {
+      timeoutId = setTimeout(() => {
+        setIsLoadingDelayed(true);
+      }, 3000);
+    } else {
+      setIsLoadingDelayed(false);
+    }
+    return () => clearTimeout(timeoutId);
+  }, [loading, isInitialLoad]);
 
   // Initial load of meetings
   useEffect(() => {
@@ -611,9 +631,37 @@ export default function App() {
               </div>
               <div className="text-center space-y-2">
                 <h2 className="text-2xl font-black uppercase italic tracking-tighter">Initializing</h2>
-                <p className="text-xs font-mono uppercase tracking-[0.3em] opacity-50">Loading Telemetry Data...</p>
+                <p className="text-xs font-mono uppercase tracking-[0.3em] opacity-50">
+                  {isLoadingDelayed ? "Rennen nicht im Cache. Live-Download von F1-Servern läuft (kann bis zu 2 Minuten dauern)..." : "Loading Telemetry Data..."}
+                </p>
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Error Toast / Modal */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-[1000] bg-f1-red text-white px-6 py-4 rounded-md shadow-2xl border border-white/20 flex items-center gap-4 max-w-xl w-full"
+          >
+            <Activity className="w-6 h-6 shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-bold uppercase tracking-wider mb-1">
+                {error.includes("Live-Datenlimit erreicht") ? "Live-Datenlimit erreicht" : "Error"}
+              </h3>
+              <p className="text-sm opacity-90">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="p-2 hover:bg-black/20 rounded-sm transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -806,18 +854,7 @@ export default function App() {
         {/* Main Content Area */}
         <section className="flex-1 p-4 lg:p-6 flex flex-col bg-dark-bg lg:overflow-hidden">
           <AnimatePresence mode="wait">
-            {error ? (
-              <motion.div 
-                key="error-alert"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-f1-red/10 border border-f1-red/30 p-4 mb-6 flex items-center gap-3 text-f1-red rounded-sm"
-              >
-                <AlertCircle className="w-5 h-5" />
-                <p className="text-sm font-bold uppercase tracking-tight">{error}</p>
-              </motion.div>
-            ) : !selectedSession ? (
+            {!selectedSession ? (
               <motion.div 
                 key="awaiting-input"
                 initial={{ opacity: 0 }}
@@ -999,7 +1036,11 @@ export default function App() {
                   <div className="inline-block p-4 border border-dark-border rounded-full animate-pulse">
                     <Timer className="w-8 h-8 text-f1-red" />
                   </div>
-                  <p className="text-xs font-mono uppercase tracking-[0.3em] opacity-50">Telemetry Stream Ready</p>
+                  <p className="text-xs font-mono uppercase tracking-[0.3em] opacity-50 max-w-md mx-auto text-center">
+                    {loading && isLoadingDelayed ? "Rennen nicht im Cache. Live-Download von F1-Servern läuft (kann bis zu 2 Minuten dauern)..." :
+                     loading ? "Loading Telemetry Data..." :
+                     "Telemetry Stream Ready"}
+                  </p>
                 </div>
               </motion.div>
             )}
@@ -1096,6 +1137,7 @@ export default function App() {
                 />
                 <YAxis 
                   stroke="#444"
+                  domain={[0, 400]}
                   tick={{ fill: '#666', fontSize: 14 }}
                   label={{ value: 'SPEED (KM/H)', angle: -90, position: 'insideLeft', fill: '#444', fontSize: 14 }}
                 />
@@ -1125,7 +1167,7 @@ export default function App() {
                       strokeDasharray={isDashed ? "5 5" : undefined}
                       dot={false}
                       animationDuration={0}
-                      connectNulls={false}
+                      connectNulls={true}
                     />
                   );
                 })}
