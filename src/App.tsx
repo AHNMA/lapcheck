@@ -28,7 +28,8 @@ import {
   Timer,
   ChevronDown,
   Check,
-  Download
+  Download,
+  X
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { f1Service, Meeting, Session, F1Result, TelemetryPoint, Lap } from './services/f1Service';
@@ -458,15 +459,12 @@ export default function App() {
         setLoading(true);
         setError(null);
         try {
-          const resultsData: any[] = [];
-          for (const driverNum of selectedDrivers) {
-            if (isCancelled) return;
+          const fetchPromises = selectedDrivers.map(async (driverNum) => {
             const driver = results.find(d => String(d.DriverNumber) === String(driverNum));
             const lap = selectedLaps[driverNum];
             
             if (!lap || !driver) {
-              resultsData.push({ driver, telemetry: [] });
-              continue;
+              return { driver, telemetry: [] };
             }
             
             const telemetry = await f1Service.getTelemetry(
@@ -477,13 +475,10 @@ export default function App() {
               lap.LapNumber
             );
 
-            if (isCancelled) return;
-            resultsData.push({ driver, telemetry });
-            
-            if (selectedDrivers.indexOf(driverNum) < selectedDrivers.length - 1) {
-              await new Promise(resolve => setTimeout(resolve, 300));
-            }
-          }
+            return { driver, telemetry };
+          });
+
+          const resultsData = await Promise.all(fetchPromises);
 
           if (isCancelled) return;
 
@@ -577,13 +572,17 @@ export default function App() {
   };
 
   const handleExportImage = async () => {
-    if (!exportRef.current || !selectedSession) return;
+    if (!selectedSession) return;
     
     setIsExporting(true);
     try {
       // Ensure the hidden container is rendered with the latest data
       await new Promise(resolve => setTimeout(resolve, 500));
       
+      if (!exportRef.current) {
+         throw new Error("Export container is not ready.");
+      }
+
       const dataUrl = await toPng(exportRef.current, {
         quality: 1,
         pixelRatio: 2,
@@ -1045,127 +1044,129 @@ export default function App() {
       </main>
 
       {/* Hidden Export Container (16:9) */}
-      <div className="fixed left-[-9999px] top-[-9999px]">
-        <div 
-          ref={exportRef}
-          style={{ width: '1600px', height: '900px' }}
-          className="bg-dark-bg p-12 flex flex-col relative overflow-hidden"
-        >
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-            style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '30px 30px' }} 
-          />
-          <div className="absolute inset-0 carbon-pattern opacity-10 pointer-events-none" />
+      {isExporting && (
+        <div className="fixed left-[-9999px] top-[-9999px]">
+          <div
+            ref={exportRef}
+            style={{ width: '1600px', height: '900px' }}
+            className="bg-dark-bg p-12 flex flex-col relative overflow-hidden"
+          >
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+              style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '30px 30px' }}
+            />
+            <div className="absolute inset-0 carbon-pattern opacity-10 pointer-events-none" />
 
-          {/* Header */}
-          <div className="flex justify-between items-end mb-12 relative z-10">
-            <div>
-              <div className="flex items-center gap-3 text-f1-red text-sm font-mono font-bold uppercase tracking-[0.3em] mb-3">
-                <span className="w-3 h-3 bg-f1-red rounded-full" />
-                Telemetry Analysis
+            {/* Header */}
+            <div className="flex justify-between items-end mb-12 relative z-10">
+              <div>
+                <div className="flex items-center gap-3 text-f1-red text-sm font-mono font-bold uppercase tracking-[0.3em] mb-3">
+                  <span className="w-3 h-3 bg-f1-red rounded-full" />
+                  Telemetry Analysis
+                </div>
+                <h2 className="text-6xl font-black uppercase italic tracking-tighter leading-none mb-4">
+                  {selectedMeeting?.meeting_name}
+                </h2>
+                <p className="text-xl font-mono opacity-50 uppercase tracking-widest">{selectedSession?.session_name}</p>
               </div>
-              <h2 className="text-6xl font-black uppercase italic tracking-tighter leading-none mb-4">
-                {selectedMeeting?.meeting_name}
-              </h2>
-              <p className="text-xl font-mono opacity-50 uppercase tracking-widest">{selectedSession?.session_name}</p>
-            </div>
-            
-            <div className="flex gap-8">
-              {selectedDrivers.map((num, idx) => {
-                const d = results.find(drv => drv.DriverNumber === num);
-                const lap = selectedLaps[num];
-                const isDashed = selectedDrivers.slice(0, idx).some(prevNum => {
-                  const prevD = results.find(drv => drv.DriverNumber === prevNum);
-                  return prevD && d && prevD.TeamName === d.TeamName;
-                });
-                return (
-                  <div key={`export-driver-${num}`} className="flex flex-col items-end gap-2">
-                    <div className="flex items-center gap-4 bg-dark-surface border border-dark-border px-6 py-3 rounded-sm">
-                      <div 
-                        className="w-2 h-8" 
-                        style={{ 
-                          background: isDashed 
-                            ? `repeating-linear-gradient(to bottom, #${d?.TeamColor || '888'}, #${d?.TeamColor || '888'} 6px, transparent 6px, transparent 12px)`
-                            : `#${d?.TeamColor || '888'}`
-                        }} 
-                      />
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono font-bold text-3xl">{d?.Abbreviation}</span>
-                        {isDashed && <span className="text-xs font-mono opacity-50 border border-white/20 px-2 py-0.5 rounded-sm">DASHED</span>}
-                      </div>
-                    </div>
-                    {lap && (
-                      <div className="flex flex-col items-end">
-                        <span className="text-sm font-mono opacity-40 uppercase tracking-widest">Lap {lap.LapNumber} ({lap.Compound})</span>
-                        <span className="text-2xl font-mono text-f1-red font-bold">{formatLapTime(lap.LapTime)}</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* Plot Area */}
-          <div className="flex-1 border border-dark-border bg-dark-surface/30 rounded-xl relative overflow-hidden p-8" style={{ minHeight: 0, minWidth: 0, position: 'relative' }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <LineChart data={telemetryData} margin={{ top: 20, right: 40, left: 20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                <XAxis 
-                  dataKey="distance" 
-                  type="number"
-                  domain={['auto', 'auto']}
-                  stroke="#444"
-                  tick={{ fill: '#666', fontSize: 14 }}
-                  label={{ value: 'Distance (m)', position: 'bottom', fill: '#444', fontSize: 14, offset: 0 }}
-                />
-                <YAxis 
-                  stroke="#444"
-                  domain={[0, 400]}
-                  tick={{ fill: '#666', fontSize: 14 }}
-                  label={{ value: 'SPEED (KM/H)', angle: -90, position: 'insideLeft', fill: '#444', fontSize: 14 }}
-                />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '4px' }}
-                  itemStyle={{ fontSize: '14px', fontWeight: 'bold' }}
-                  labelStyle={{ color: '#666', marginBottom: '4px' }}
-                />
+              <div className="flex gap-8">
                 {selectedDrivers.map((num, idx) => {
                   const d = results.find(drv => drv.DriverNumber === num);
-                  if (!d) return null;
+                  const lap = selectedLaps[num];
                   const isDashed = selectedDrivers.slice(0, idx).some(prevNum => {
                     const prevD = results.find(drv => drv.DriverNumber === prevNum);
                     return prevD && d && prevD.TeamName === d.TeamName;
                   });
-                  // Assign some default colors if TeamColor is missing from the new API
-                  const defaultColors = ['#FF1E1E', '#1E90FF', '#32CD32', '#FFA500', '#9370DB', '#00CED1'];
-                  const color = d.TeamColor ? `#${d.TeamColor}` : defaultColors[idx % defaultColors.length];
                   return (
-                    <Line
-                      key={`export-line-${num}`}
-                      type="monotone"
-                      dataKey={`${d.Abbreviation}_speed`}
-                      name={`${d.Abbreviation}_${num}_speed`}
-                      stroke={color}
-                      strokeWidth={4}
-                      strokeDasharray={isDashed ? "5 5" : undefined}
-                      dot={false}
-                      animationDuration={0}
-                      connectNulls={true}
-                    />
+                    <div key={`export-driver-${num}`} className="flex flex-col items-end gap-2">
+                      <div className="flex items-center gap-4 bg-dark-surface border border-dark-border px-6 py-3 rounded-sm">
+                        <div
+                          className="w-2 h-8"
+                          style={{
+                            background: isDashed
+                              ? `repeating-linear-gradient(to bottom, #${d?.TeamColor || '888'}, #${d?.TeamColor || '888'} 6px, transparent 6px, transparent 12px)`
+                              : `#${d?.TeamColor || '888'}`
+                          }}
+                        />
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono font-bold text-3xl">{d?.Abbreviation}</span>
+                          {isDashed && <span className="text-xs font-mono opacity-50 border border-white/20 px-2 py-0.5 rounded-sm">DASHED</span>}
+                        </div>
+                      </div>
+                      {lap && (
+                        <div className="flex flex-col items-end">
+                          <span className="text-sm font-mono opacity-40 uppercase tracking-widest">Lap {lap.LapNumber} ({lap.Compound})</span>
+                          <span className="text-2xl font-mono text-f1-red font-bold">{formatLapTime(lap.LapTime)}</span>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+              </div>
+            </div>
 
-          {/* Footer */}
-          <div className="mt-8 flex justify-between items-center opacity-30 font-mono text-xs uppercase tracking-[0.5em]">
-            <div>Lap-Check Telemetry: SPEED</div>
-            <div>{new Date().toLocaleDateString()} // {selectedMeeting?.location}</div>
+            {/* Plot Area */}
+            <div className="flex-1 border border-dark-border bg-dark-surface/30 rounded-xl relative overflow-hidden p-8" style={{ minHeight: 0, minWidth: 0, position: 'relative' }}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <LineChart data={telemetryData} margin={{ top: 20, right: 40, left: 20, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                  <XAxis
+                    dataKey="distance"
+                    type="number"
+                    domain={['auto', 'auto']}
+                    stroke="#444"
+                    tick={{ fill: '#666', fontSize: 14 }}
+                    label={{ value: 'Distance (m)', position: 'bottom', fill: '#444', fontSize: 14, offset: 0 }}
+                  />
+                  <YAxis
+                    stroke="#444"
+                    domain={[0, 400]}
+                    tick={{ fill: '#666', fontSize: 14 }}
+                    label={{ value: 'SPEED (KM/H)', angle: -90, position: 'insideLeft', fill: '#444', fontSize: 14 }}
+                  />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '4px' }}
+                    itemStyle={{ fontSize: '14px', fontWeight: 'bold' }}
+                    labelStyle={{ color: '#666', marginBottom: '4px' }}
+                  />
+                  {selectedDrivers.map((num, idx) => {
+                    const d = results.find(drv => drv.DriverNumber === num);
+                    if (!d) return null;
+                    const isDashed = selectedDrivers.slice(0, idx).some(prevNum => {
+                      const prevD = results.find(drv => drv.DriverNumber === prevNum);
+                      return prevD && d && prevD.TeamName === d.TeamName;
+                    });
+                    // Assign some default colors if TeamColor is missing from the new API
+                    const defaultColors = ['#FF1E1E', '#1E90FF', '#32CD32', '#FFA500', '#9370DB', '#00CED1'];
+                    const color = d.TeamColor ? `#${d.TeamColor}` : defaultColors[idx % defaultColors.length];
+                    return (
+                      <Line
+                        key={`export-line-${num}`}
+                        type="monotone"
+                        dataKey={`${d.Abbreviation}_speed`}
+                        name={`${d.Abbreviation}_${num}_speed`}
+                        stroke={color}
+                        strokeWidth={4}
+                        strokeDasharray={isDashed ? "5 5" : undefined}
+                        dot={false}
+                        animationDuration={0}
+                        connectNulls={true}
+                      />
+                    );
+                  })}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-8 flex justify-between items-center opacity-30 font-mono text-xs uppercase tracking-[0.5em]">
+              <div>Lap-Check Telemetry: SPEED</div>
+              <div>{new Date().toLocaleDateString()} // {selectedMeeting?.location}</div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
