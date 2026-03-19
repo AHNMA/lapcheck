@@ -782,15 +782,103 @@ export default function App() {
       {isExporting && (
         <div className="fixed left-[-9999px] top-[-9999px]">
           <div ref={exportRef} style={{ width: '1600px', height: '900px' }} className="bg-dark-bg p-12 flex flex-col relative overflow-hidden">
+            {/* Hintergrund-Muster */}
             <div className="absolute inset-0 carbon-pattern opacity-10 pointer-events-none" />
-            <div className="flex justify-between items-end mb-12 relative z-10">
-              <div>
-                <h2 className="text-6xl font-black uppercase italic tracking-tighter leading-none mb-4">{selectedMeeting?.meeting_name}</h2>
-                <p className="text-xl font-mono opacity-50 uppercase tracking-widest">{selectedSession?.session_name}</p>
+
+            {/* Header-Bereich: Logo/Titel Links & Fahrer-Boxen Rechts */}
+            <div className="flex justify-between items-start mb-10 relative z-10">
+
+              {/* Oben Links: Logo und Grand Prix Info */}
+              <div className="flex flex-col gap-6">
+                <img
+                  src="https://storage.googleapis.com/lap-check-images/lap_logo.png?v=3"
+                  alt="Lap-Check Logo"
+                  className="h-12 w-auto object-contain object-left"
+                  referrerPolicy="no-referrer"
+                />
+                <div>
+                  <h2 className="text-6xl font-black uppercase italic tracking-tighter leading-none mb-3">
+                    {selectedMeeting?.meeting_name}
+                  </h2>
+                  <p className="text-2xl font-mono opacity-50 uppercase tracking-widest">
+                    {selectedSession?.session_name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Oben Rechts: Fahrer Info Boxen (Hochskaliertes UI-Layout) */}
+              <div className="flex gap-6">
+                {selectedDrivers.map((num, idx) => {
+                  const d = results.find(drv => drv.DriverNumber === num);
+                  const lap = selectedLaps[num];
+                  const isDashed = selectedDrivers.slice(0, idx).some(prevNum => {
+                    const prevD = results.find(drv => drv.DriverNumber === prevNum);
+                    return prevD && d && prevD.TeamName === d.TeamName;
+                  });
+
+                  return (
+                    <div
+                      key={`export-driver-${num}`}
+                      className="flex items-stretch gap-4 bg-dark-surface/80 border border-dark-border p-4 rounded-md min-w-[260px] shadow-xl"
+                    >
+                      <div
+                        className="w-2.5 rounded-full shrink-0"
+                        style={{
+                          background: isDashed
+                            ? `repeating-linear-gradient(to bottom, #${d?.TeamColor || '888'}, #${d?.TeamColor || '888'} 8px, transparent 8px, transparent 16px)`
+                            : `#${d?.TeamColor || '888'}`
+                        }}
+                      />
+
+                      <div className="flex flex-col justify-between flex-1 gap-2 min-w-0">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-black text-4xl tracking-tighter leading-none">{d?.Abbreviation}</span>
+                            {isDashed && <span className="text-sm font-mono opacity-50 border border-white/20 px-2 py-0.5 rounded-sm">DASHED</span>}
+                          </div>
+
+                          {/* FIX: Hier wird nun das TyreIcon statt dem Text gerendert */}
+                          {lap && (
+                            <div className="shrink-0 flex items-center justify-center">
+                              <TyreIcon compound={lap.Compound} />
+                            </div>
+                          )}
+                        </div>
+
+                        {lap && (
+                          <div className="flex flex-col mt-2 min-w-0">
+                            <span className="text-sm font-mono opacity-40 uppercase tracking-widest truncate">
+                              Lap {lap.LapNumber}
+                            </span>
+                            <span className="text-2xl font-mono text-f1-red font-bold leading-none mt-1 truncate">
+                              {formatLapTime(lap.LapTime)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-            <div className="flex-1 border border-dark-border bg-dark-surface/30 rounded-xl relative overflow-hidden p-8" style={{ minHeight: 0, minWidth: 0, position: 'relative' }}>
-               <TelemetryChart data={telemetryData} metric={viewMode === 'single' ? selectedMetric : 'speed'} results={results} selectedDrivers={selectedDrivers} height="100%" showXAxis={true} />
+
+            {/* Der eigentliche Graph */}
+            <div className="flex-1 border border-dark-border bg-dark-surface/40 rounded-xl relative overflow-hidden p-8 shadow-2xl" style={{ minHeight: 0, minWidth: 0, position: 'relative' }}>
+               <TelemetryChart
+                 data={telemetryData}
+                 metric={viewMode === 'single' ? selectedMetric : 'speed'}
+                 results={results}
+                 selectedDrivers={selectedDrivers}
+                 height="100%"
+                 showXAxis={true}
+               />
+            </div>
+
+            {/* Kleine Signatur unten rechts */}
+            <div className="mt-6 flex justify-end">
+               <span className="text-xs font-mono opacity-30 uppercase tracking-[0.3em]">
+                 Generated by LapCheck // Telemetry: {viewMode === 'single' ? selectedMetric.toUpperCase() : 'SPEED'}
+               </span>
             </div>
           </div>
         </div>
