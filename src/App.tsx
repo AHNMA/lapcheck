@@ -672,21 +672,49 @@ export default function App() {
                         const prevD = results.find(drv => drv.DriverNumber === prevNum);
                         return prevD && d && prevD.TeamName === d.TeamName;
                       });
+
                       return (
-                        <div key={`driver-status-${num}`} className="flex items-stretch gap-3 bg-dark-surface/50 border border-dark-border p-2.5 rounded-sm min-w-[110px]">
-                          <div className="w-1 rounded-full" style={{ background: isDashed ? `repeating-linear-gradient(to bottom, #${d?.TeamColor || '888'}, #${d?.TeamColor || '888'} 4px, transparent 4px, transparent 8px)` : `#${d?.TeamColor || '888'}` }} />
-                          <div className="flex flex-col justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-black text-lg tracking-tighter leading-none">{d?.Abbreviation}</span>
-                              {isDashed && <span className="text-[8px] font-mono opacity-50 border border-white/20 px-1 rounded-sm">DASHED</span>}
-                            </div>
-                            {lap && (
-                              <div className="flex flex-col mt-1">
-                                <span className="text-[8px] font-mono opacity-40 uppercase tracking-tighter flex items-center gap-1">
-                                  Lap {lap.LapNumber}
+                        <div
+                          key={`driver-status-${num}`}
+                          className="flex items-stretch gap-3 bg-dark-surface/50 border border-dark-border p-3 rounded-sm min-w-[120px]"
+                        >
+                          {/* Team Color Strip - 'shrink-0' verhindert, dass die Linie zerquetscht wird */}
+                          <div
+                            className="w-1.5 rounded-full shrink-0"
+                            style={{
+                              background: isDashed
+                                ? `repeating-linear-gradient(to bottom, #${d?.TeamColor || '888'}, #${d?.TeamColor || '888'} 4px, transparent 4px, transparent 8px)`
+                                : `#${d?.TeamColor || '888'}`
+                            }}
+                          />
+
+                          {/* Data Container - 'flex-1' und 'min-w-0' halten die Texte in ihren Boxen */}
+                          <div className="flex flex-col justify-between flex-1 gap-1 min-w-0">
+
+                            {/* Obere Reihe: Fahrer & Compound-Badge */}
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="font-black text-lg tracking-tighter leading-none">{d?.Abbreviation}</span>
+                                {isDashed && <span className="text-[8px] font-mono opacity-50 border border-white/20 px-1 py-0.5 rounded-sm">DASHED</span>}
+                              </div>
+
+                              {/* Reifen-Compound als sauberes Badge ausgelagert */}
+                              {lap && (
+                                <div className="shrink-0 flex items-center justify-center">
                                   <TyreIcon compound={lap.Compound} />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Untere Reihe: Runde & Zeit */}
+                            {lap && (
+                              <div className="flex flex-col mt-0.5">
+                                <span className="text-[9px] font-mono opacity-40 uppercase tracking-widest truncate">
+                                  Lap {lap.LapNumber}
                                 </span>
-                                <span className="text-[11px] font-mono text-f1-red font-bold leading-none">{formatLapTime(lap.LapTime)}</span>
+                                <span className="text-xs font-mono text-f1-red font-bold leading-none mt-1 truncate">
+                                  {formatLapTime(lap.LapTime)}
+                                </span>
                               </div>
                             )}
                           </div>
