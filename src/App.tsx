@@ -80,6 +80,7 @@ interface DropdownProps<T> {
   placeholder?: string;
   openUpwards?: boolean;
   maxItems?: number;
+  key?: string | number;
 }
 
 function CustomDropdown<T>({ 
@@ -258,6 +259,7 @@ export default function App() {
       const data = await f1Service.getMeetings(year);
       const now = new Date();
       // FIX 4: Ersetze Leerzeichen durch 'T' für ISO-8601 Safari-Kompatibilität
+      // We also only want to show past meetings (those that have happened)
       const pastMeetings = data.filter(m => new Date(m.event_date.replace(' ', 'T')) <= now);
       return pastMeetings.sort((a, b) => a.round - b.round);
     }
@@ -265,7 +267,14 @@ export default function App() {
 
   const { data: sessions = [], isLoading: loadingSessions, error: errorSessions } = useQuery({
     queryKey: ['sessions', year, selectedMeeting?.meeting_name],
-    queryFn: () => f1Service.getSessions(year, selectedMeeting!.meeting_name),
+    queryFn: async () => {
+      const data = await f1Service.getSessions(year, selectedMeeting!.meeting_name);
+      const now = new Date();
+      // Only keep sessions that are actually in the past
+      return data
+        .filter(s => new Date(s.session_date.replace(' ', 'T')) <= now)
+        .sort((a, b) => new Date(a.session_date.replace(' ', 'T')).getTime() - new Date(b.session_date.replace(' ', 'T')).getTime());
+    },
     enabled: !!selectedMeeting
   });
 
