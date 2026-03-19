@@ -338,21 +338,27 @@ export default function App() {
 
   // 1. Auto-Select Meeting
   useEffect(() => {
-    if (meetings.length > 0 && !selectedMeeting) {
-      setSelectedMeeting(meetings[meetings.length - 1]);
+    if (meetings.length > 0) {
+      // If no meeting is selected, or the currently selected meeting is not in the list for this year, pick the latest one
+      if (!selectedMeeting || !meetings.some(m => m.round === selectedMeeting.round)) {
+        setSelectedMeeting(meetings[meetings.length - 1]);
+      }
     } else if (meetings.length === 0) {
       setSelectedMeeting(null);
     }
-  }, [meetings, selectedMeeting]);
+  }, [meetings, year]); // Listen to 'year' changes to trigger reset logic
 
   // 2. Auto-Select Session
   useEffect(() => {
-    if (sessions.length > 0 && !selectedSession) {
-      setSelectedSession(sessions[sessions.length - 1]);
+    if (sessions.length > 0) {
+      // If no session is selected, or the currently selected session is not in the list for this meeting, pick the latest one
+      if (!selectedSession || !sessions.some(s => s.session_identifier === selectedSession.session_identifier)) {
+        setSelectedSession(sessions[sessions.length - 1]);
+      }
     } else if (sessions.length === 0) {
       setSelectedSession(null);
     }
-  }, [sessions, selectedSession]);
+  }, [sessions, selectedMeeting]); // Listen to 'selectedMeeting' changes to trigger reset logic
 
   // 3. Auto-Select Drivers (Smart Overwrite) & Reset Laps
   useEffect(() => {
@@ -511,7 +517,7 @@ export default function App() {
                 <CustomDropdown label="02. Grand Prix" icon={<MapPin className="w-3 h-3 text-f1-red" />} options={meetings} value={selectedMeeting} onChange={setSelectedMeeting} getLabel={(m) => m.meeting_name} getKey={(m) => m.round} placeholder="Select Grand Prix" disabled={loadingSessions} />
                 <AnimatePresence>
                   {selectedMeeting && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
                       <CustomDropdown label="03. Session" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={sessions} value={selectedSession} onChange={setSelectedSession} getLabel={(s) => s.session_name} getKey={(s) => s.session_identifier} placeholder="Select Session" disabled={loadingResults} />
                     </motion.div>
                   )}
