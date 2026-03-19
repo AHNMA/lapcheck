@@ -21,9 +21,7 @@ import {
   ChevronDown,
   Check,
   Download,
-  X,
-  CircleDot,
-  Zap
+  X
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { useQuery, useQueries } from '@tanstack/react-query';
@@ -47,9 +45,16 @@ const METRIC_LABELS: Record<string, string> = {
   gear: 'Gear'
 };
 
+const parseLapTime = (timeStr: string | null | undefined): number => {
+  if (!timeStr || timeStr === 'None' || timeStr === 'NaT') return Infinity;
+  const match = timeStr.match(/(?:(\d+) days? )?(\d+):(\d+):([\d.]+)/);
+  if (!match) return Infinity;
+  const [, days, hours, minutes, seconds] = match;
+  return (parseInt(days || '0') * 86400) + (parseInt(hours) * 3600) + (parseInt(minutes) * 60) + parseFloat(seconds);
+};
+
 const formatLapTime = (lapTime: string | null | undefined) => {
-  if (!lapTime || lapTime === 'None') return '-:--.---';
-  if (lapTime === 'NaT') return 'In/Out Lap';
+  if (!lapTime || lapTime === 'None' || lapTime === 'NaT') return 'In/Out Lap';
   const match = lapTime.match(/(?:(\d+) days? )?(\d+):(\d+):([\d.]+)/);
   if (match) {
     const [, , hours, minutes, secondsStr] = match;
@@ -61,35 +66,33 @@ const formatLapTime = (lapTime: string | null | undefined) => {
   return lapTime;
 };
 
-// Hilfsfunktion zum Berechnen der schnellsten Runde (in Sekunden)
-const parseLapTime = (timeStr: string | null | undefined): number => {
-  if (!timeStr || timeStr === 'None' || timeStr === 'NaT') return Infinity;
-  const match = timeStr.match(/(?:(\d+) days? )?(\d+):(\d+):([\d.]+)/);
-  if (!match) return Infinity;
-  const [, days, hours, minutes, seconds] = match;
-  return (parseInt(days || '0') * 86400) + (parseInt(hours) * 3600) + (parseInt(minutes) * 60) + parseFloat(seconds);
-};
+// --- NEU: Dynamische Tyre Icon Komponente ---
+const TyreIcon = ({ compound, size = 'normal' }: { compound: string, size?: 'normal' | 'large' }) => {
+  let color = '#444';
+  let letter = compound?.charAt(0)?.toUpperCase() || '?';
+  let textColor = '#fff';
 
-// Helper für Reifen-Icons
-const getTyreColor = (compound: string) => {
   switch (compound?.toUpperCase()) {
-    case 'SOFT': return '#FF1E1E';
-    case 'MEDIUM': return '#FFFF00';
-    case 'HARD': return '#FFFFFF';
-    case 'INTERMEDIATE': return '#32CD32';
-    case 'WET': return '#1E90FF';
-    default: return '#888888';
+    case 'SOFT': color = '#FF1E1E'; letter = 'S'; break;
+    case 'MEDIUM': color = '#FFD700'; letter = 'M'; textColor = '#000'; break;
+    case 'HARD': color = '#FFFFFF'; letter = 'H'; textColor = '#000'; break;
+    case 'INTERMEDIATE': color = '#32CD32'; letter = 'I'; textColor = '#000'; break;
+    case 'WET': color = '#1E90FF'; letter = 'W'; break;
   }
-};
 
-const TyreIcon = ({ compound }: { compound: string }) => {
-  const color = getTyreColor(compound);
+  const dims = size === 'large' ? 'w-10 h-10 border-[3px]' : 'w-5 h-5 border-[1.5px]';
+  const textSize = size === 'large' ? 'text-xl' : 'text-[10px]';
+
   return (
-    <CircleDot
-      className="w-3.5 h-3.5 inline-block mx-1"
-      style={{ color }}
+    <div
+      className={cn("flex items-center justify-center rounded-full border-dark-bg shrink-0 shadow-lg", dims)}
+      style={{ backgroundColor: color }}
       title={compound}
-    />
+    >
+      <span className={cn("font-black leading-none mt-[1px]", textSize)} style={{ color: textColor }}>
+        {letter}
+      </span>
+    </div>
   );
 };
 
@@ -100,13 +103,12 @@ interface DropdownProps<T> {
   options: T[];
   value: T | null;
   onChange: (value: T) => void;
-  getLabel: (option: T) => React.ReactNode;
+  getLabel: (option: T) => string;
   getKey: (option: T) => string | number;
   disabled?: boolean;
   placeholder?: string;
   openUpwards?: boolean;
   maxItems?: number;
-  key?: string | number;
 }
 
 function CustomDropdown<T>({ 
@@ -139,8 +141,8 @@ function CustomDropdown<T>({
           isOpen && "border-f1-red"
         )}
       >
-        <div className="truncate flex items-center gap-1">{value ? getLabel(value) : placeholder}</div>
-        <ChevronDown className={cn("w-4 h-4 transition-transform shrink-0", isOpen && "rotate-180")} />
+        <span className="truncate">{value ? getLabel(value) : placeholder}</span>
+        <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
       </button>
 
       <AnimatePresence>
@@ -160,12 +162,12 @@ function CustomDropdown<T>({
                 key={`${getKey(option)}-${idx}`}
                 onClick={() => { onChange(option); setIsOpen(false); }}
                 className={cn(
-                  "w-full text-left px-3 py-2 text-sm hover:bg-f1-red hover:text-white transition-colors flex items-center justify-between group",
+                  "w-full text-left px-3 py-2 text-sm hover:bg-f1-red hover:text-white transition-colors flex items-center justify-between",
                   value && getKey(value) === getKey(option) && "bg-f1-red/20 text-f1-red"
                 )}
               >
-                <div className="truncate flex items-center gap-1 flex-1">{getLabel(option)}</div>
-                {value && getKey(value) === getKey(option) && <Check className="w-4 h-4 shrink-0 ml-2" />}
+                <span className="truncate">{getLabel(option)}</span>
+                {value && getKey(value) === getKey(option) && <Check className="w-4 h-4" />}
               </button>
             ))}
           </motion.div>
@@ -223,7 +225,7 @@ const TelemetryChart = React.memo(function TelemetryChart({
   }, [data, metric, results, selectedDrivers]);
 
   const option = {
-    grid: { top: 20, right: 20, bottom: showXAxis ? 30 : 10, left: 60, containLabel: false },
+    grid: { top: 40, right: 20, bottom: showXAxis ? 30 : 10, left: 75, containLabel: false },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross', crossStyle: { color: '#FF1E1E' } },
@@ -242,7 +244,7 @@ const TelemetryChart = React.memo(function TelemetryChart({
       nameTextStyle: { color: '#444', fontFamily: 'monospace', fontSize: 9 }
     },
     yAxis: {
-      type: 'value', name: METRIC_LABELS[metric] || metric, nameLocation: 'middle', nameGap: 40,
+      type: 'value', name: METRIC_LABELS[metric] || metric, nameLocation: 'middle', nameGap: 50,
       nameTextStyle: { color: '#444', fontFamily: 'monospace', fontSize: 9 },
       min: metric === 'gear' ? 0 : (metric === 'throttle' || metric === 'brake' ? 0 : 'dataMin'),
       max: metric === 'gear' ? 8 : (metric === 'throttle' || metric === 'brake' ? 100 : 'dataMax'),
@@ -284,8 +286,6 @@ export default function App() {
     queryFn: async () => {
       const data = await f1Service.getMeetings(year);
       const now = new Date();
-      // FIX 4: Ersetze Leerzeichen durch 'T' für ISO-8601 Safari-Kompatibilität
-      // We also only want to show past meetings (those that have happened)
       const pastMeetings = data.filter(m => new Date(m.event_date.replace(' ', 'T')) <= now);
       return pastMeetings.sort((a, b) => a.round - b.round);
     }
@@ -293,14 +293,7 @@ export default function App() {
 
   const { data: sessions = [], isLoading: loadingSessions, error: errorSessions } = useQuery({
     queryKey: ['sessions', year, selectedMeeting?.meeting_name],
-    queryFn: async () => {
-      const data = await f1Service.getSessions(year, selectedMeeting!.meeting_name);
-      const now = new Date();
-      // Only keep sessions that are actually in the past
-      return data
-        .filter(s => new Date(s.session_date.replace(' ', 'T')) <= now)
-        .sort((a, b) => new Date(a.session_date.replace(' ', 'T')).getTime() - new Date(b.session_date.replace(' ', 'T')).getTime());
-    },
+    queryFn: () => f1Service.getSessions(year, selectedMeeting!.meeting_name),
     enabled: !!selectedMeeting
   });
 
@@ -335,7 +328,7 @@ export default function App() {
   const allLapsReady = selectedDrivers.length > 0 && selectedDrivers.every(num => selectedLaps[num] !== null && selectedLaps[num] !== undefined);
 
   const { data: telemetryData = [], isFetching: loadingTelemetry, error: errorTelemetry } = useQuery({
-    queryKey: ['telemetry', year, selectedMeeting?.meeting_name, selectedSession?.session_name, selectedDrivers.join(','), Object.values(selectedLaps).map(l => (l as Lap | null)?.LapNumber).join(',')],
+    queryKey: ['telemetry', year, selectedMeeting?.meeting_name, selectedSession?.session_name, selectedDrivers.join(','), Object.values(selectedLaps).map(l => l?.LapNumber).join(',')],
     queryFn: () => new Promise<any[]>((resolve, reject) => {
       const worker = new Worker(new URL('./workers/telemetryWorker.ts', import.meta.url), { type: 'module' });
       worker.onmessage = (e) => {
@@ -362,59 +355,45 @@ export default function App() {
 
   // --- AUTO-SELECTIONS & STATE RESETS ---
 
-  // 1. Auto-Select Meeting
   useEffect(() => {
-    if (meetings.length > 0) {
-      // If no meeting is selected, or the currently selected meeting is not in the list for this year, pick the latest one
-      if (!selectedMeeting || !meetings.some(m => m.round === selectedMeeting.round)) {
-        setSelectedMeeting(meetings[meetings.length - 1]);
-      }
+    if (meetings.length > 0 && !selectedMeeting) {
+      setSelectedMeeting(meetings[meetings.length - 1]);
     } else if (meetings.length === 0) {
       setSelectedMeeting(null);
     }
-  }, [meetings, year]); // Listen to 'year' changes to trigger reset logic
+  }, [meetings, selectedMeeting]);
 
-  // 2. Auto-Select Session
   useEffect(() => {
-    if (sessions.length > 0) {
-      // If no session is selected, or the currently selected session is not in the list for this meeting, pick the latest one
-      if (!selectedSession || !sessions.some(s => s.session_identifier === selectedSession.session_identifier)) {
-        setSelectedSession(sessions[sessions.length - 1]);
-      }
+    if (sessions.length > 0 && !selectedSession) {
+      setSelectedSession(sessions[sessions.length - 1]);
     } else if (sessions.length === 0) {
       setSelectedSession(null);
     }
-  }, [sessions, selectedMeeting]); // Listen to 'selectedMeeting' changes to trigger reset logic
+  }, [sessions, selectedSession]);
 
-  // 3. Auto-Select Drivers (Smart Overwrite) & Reset Laps
   useEffect(() => {
-    setSelectedLaps({}); // FIX 2: Bei neuer Session IMMER die Runden verwerfen
+    setSelectedLaps({});
 
     if (results.length > 0) {
       setSelectedDrivers(prevDrivers => {
-        // Prüfen, ob die bisher gewählten Fahrer in der neuen Session existieren
         const validExistingDrivers = prevDrivers.filter(num =>
           results.some(r => String(r.DriverNumber) === String(num))
         );
 
-        // Wenn beide noch gültig sind, behalte sie!
         if (validExistingDrivers.length === 2) return validExistingDrivers;
 
-        // Wenn nur einer gültig ist, fülle mit dem Nächstbesten auf
         if (validExistingDrivers.length === 1) {
           const nextBest = results.find(r => String(r.DriverNumber) !== validExistingDrivers[0]);
           return nextBest ? [...validExistingDrivers, String(nextBest.DriverNumber)] : validExistingDrivers;
         }
 
-        // Wenn keiner gültig war (oder prevDrivers leer ist), nimm die Top 2 der neuen Session
         return results.slice(0, 2).map(r => String(r.DriverNumber));
       });
     } else {
       setSelectedDrivers([]);
     }
-  }, [results]); // Dieser Effekt feuert nur, wenn neue Resultate geladen wurden
+  }, [results]);
 
-  // 4. Auto-Select Fastest Laps (Infinite Loop Safe)
   useEffect(() => {
     setSelectedLaps(prevLaps => {
       let hasChanges = false;
@@ -434,10 +413,9 @@ export default function App() {
         }
       });
 
-      // FIX 3: Durch den Return des unveränderten 'prevLaps' bricht React den Render-Zyklus ab
       return hasChanges ? nextLaps : prevLaps;
     });
-  }, [availableLaps, selectedDrivers]); // selectedLaps ist KEINE Dependency mehr!
+  }, [availableLaps, selectedDrivers]);
 
   const handleDriverToggle = (driverNumber: string) => {
     setSelectedDrivers(prev => {
@@ -454,8 +432,6 @@ export default function App() {
     });
   };
 
-  // --- UI STATES (Loading & Errors) ---
-
   const isAnyLoading = loadingMeetings || loadingSessions || loadingResults || lapQueries.some(q => q.isLoading) || loadingTelemetry;
   const queryError = errorMeetings || errorSessions || errorResults || errorTelemetry || lapQueries.find(q => q.error)?.error;
   const displayError = manualError || (queryError ? (queryError as Error).message : null);
@@ -471,6 +447,7 @@ export default function App() {
     return () => clearTimeout(timeoutId);
   }, [isAnyLoading]);
 
+  // FIX: Erweitertes Error-Logging und robusterer Export
   const handleExportImage = async () => {
     if (!selectedSession) return;
     setIsExporting(true);
@@ -478,7 +455,15 @@ export default function App() {
       await new Promise(resolve => setTimeout(resolve, 500));
       if (!exportRef.current) throw new Error("Export container is not ready.");
 
-      const dataUrl = await toPng(exportRef.current, { quality: 1, pixelRatio: 2, backgroundColor: '#0a0a0a', width: 1600, height: 900 });
+      const dataUrl = await toPng(exportRef.current, {
+        quality: 1,
+        pixelRatio: 2,
+        backgroundColor: '#0a0a0a',
+        width: 1600,
+        height: 900,
+        fetchRequest: { cache: 'no-cache' } // Hilft bei Cache-Problemen mit html-to-image
+      });
+
       const driverNames = selectedDrivers.map(num => results.find(d => d.DriverNumber === num)?.Abbreviation).filter(Boolean).join('-');
       const filename = `${selectedMeeting?.meeting_name}-${selectedSession?.session_name}-${driverNames}-telemetry.png`.toLowerCase().replace(/\s+/g, '-');
       
@@ -487,7 +472,8 @@ export default function App() {
       link.href = dataUrl;
       link.click();
     } catch (err) {
-      setManualError('Failed to export image');
+      console.error("Export PNG Error:", err); // Fehler im Browser loggen
+      setManualError(`Failed to export image: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setIsExporting(false);
     }
@@ -530,20 +516,20 @@ export default function App() {
       </AnimatePresence>
 
       <main className="flex flex-col-reverse lg:grid lg:grid-cols-[380px_1fr] flex-1 lg:overflow-hidden">
-        <aside className="border-t lg:border-t-0 lg:border-r border-dark-border lg:h-full carbon-pattern lg:overflow-hidden no-scrollbar relative flex flex-col">
-          <div className="p-3 lg:p-4 h-full flex flex-col relative z-10 lg:overflow-hidden">
-            <div className="flex items-center justify-between mb-4 shrink-0">
+        <aside className="border-t lg:border-t-0 lg:border-r border-dark-border lg:h-full carbon-pattern overflow-y-auto no-scrollbar relative flex flex-col">
+          <div className="p-3 lg:p-4 h-full flex flex-col relative z-10">
+            <div className="flex items-center justify-between mb-4">
               <img src="https://storage.googleapis.com/lap-check-images/lap_logo.png?v=3" alt="Lap-Check Logo" className="h-10 w-auto" referrerPolicy="no-referrer" />
               {isAnyLoading && <Loader2 className="w-5 h-5 animate-spin text-f1-red" />}
             </div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col gap-3 bg-dark-surface/40 p-3 rounded-xl lg:bg-transparent lg:p-0 lg:rounded-none border border-dark-border lg:border-0 mb-2 lg:mb-0 min-h-0 lg:overflow-hidden">
-              <div className="space-y-3 shrink-0">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col space-y-3 bg-dark-surface/40 p-3 rounded-xl lg:bg-transparent lg:p-0 lg:rounded-none border border-dark-border lg:border-0 mb-2 lg:mb-0 min-h-0">
+              <div className="space-y-3">
                 <CustomDropdown label="01. Year" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={YEARS} value={year} onChange={setYear} getLabel={(y) => y.toString()} getKey={(y) => y} disabled={loadingMeetings} />
                 <CustomDropdown label="02. Grand Prix" icon={<MapPin className="w-3 h-3 text-f1-red" />} options={meetings} value={selectedMeeting} onChange={setSelectedMeeting} getLabel={(m) => m.meeting_name} getKey={(m) => m.round} placeholder="Select Grand Prix" disabled={loadingSessions} />
                 <AnimatePresence>
                   {selectedMeeting && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                       <CustomDropdown label="03. Session" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={sessions} value={selectedSession} onChange={setSelectedSession} getLabel={(s) => s.session_name} getKey={(s) => s.session_identifier} placeholder="Select Session" disabled={loadingResults} />
                     </motion.div>
                   )}
@@ -552,8 +538,8 @@ export default function App() {
 
               <AnimatePresence>
                 {selectedSession && results.length > 0 && (
-                  <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="pt-3 border-t border-dark-border flex-1 flex flex-col min-h-0">
-                    <div className="flex items-center justify-between mb-2 shrink-0">
+                  <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="pt-4 border-t border-dark-border">
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em]">
                         <Users className="w-3 h-3 text-f1-red" />
                         <span>04. Drivers ({selectedDrivers.length}/2)</span>
@@ -561,9 +547,9 @@ export default function App() {
                       {selectedDrivers.length > 0 && <button onClick={() => { setSelectedDrivers([]); setSelectedLaps({}); }} className="text-[10px] font-mono uppercase text-f1-red hover:underline">Reset</button>}
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-1.5 flex-1 min-h-0 auto-rows-[1fr]">
+                    <div className="grid grid-cols-2 gap-1.5">
                       {results.map((d) => (
-                        <button key={d.DriverNumber} onClick={() => handleDriverToggle(d.DriverNumber)} className={cn("relative h-full overflow-hidden group flex items-center justify-between px-2 py-1 border rounded-sm transition-all", selectedDrivers.includes(d.DriverNumber) ? "bg-f1-red/10 text-white border-f1-red" : "bg-dark-bg border-dark-border hover:border-f1-red/50")}>
+                        <button key={d.DriverNumber} onClick={() => handleDriverToggle(d.DriverNumber)} className={cn("relative overflow-hidden group flex items-center justify-between px-2 py-1.5 border rounded-sm transition-all", selectedDrivers.includes(d.DriverNumber) ? "bg-f1-red/10 text-white border-f1-red" : "bg-dark-bg border-dark-border hover:border-f1-red/50")}>
                           <div className="absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5" style={{ backgroundColor: `#${d.TeamColor || '888'}` }} />
                           <div className="pl-1.5 flex items-center gap-2">
                             <span className="font-mono font-bold text-[10px] w-3 text-center text-white/40">{d.Position}</span>
@@ -576,8 +562,8 @@ export default function App() {
                 )}
 
                 {selectedDrivers.length > 0 && (
-                  <motion.section key="sidebar-lap-selection" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="pt-3 border-t border-dark-border shrink-0">
-                    <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em] mb-2">
+                  <motion.section key="sidebar-lap-selection" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mt-4 pt-4 border-t border-dark-border">
+                    <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em] mb-3">
                       <Timer className="w-3 h-3 text-f1-red" />
                       <span>05. Lap Selection</span>
                     </div>
@@ -587,54 +573,13 @@ export default function App() {
                         const laps = availableLaps[num] || [];
                         const isLoadingLaps = lapQueries[idx]?.isLoading;
 
-                        if (isLoadingLaps) {
-                          return (
-                            <CustomDropdown
-                              key={`sidebar-lap-${num}-loading`}
-                              label={`${d?.Abbreviation}`}
-                              icon={<span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `#${d?.TeamColor || '888'}` }} />}
-                              options={[]}
-                              value={null}
-                              onChange={() => {}}
-                              getLabel={() => ""}
-                              getKey={() => ""}
-                              disabled={true}
-                              placeholder="Loading laps..."
-                            />
-                          );
-                        }
+                        if (isLoadingLaps) return <div key={num} className="text-xs text-center opacity-50 font-mono py-2">Loading laps...</div>;
                         if (laps.length === 0) return null;
 
-                        // Finde die schnellste Runde für diesen Fahrer, um den Indikator zu setzen
-                        const validLapsForFastest = laps.filter(l => l.LapTime && l.LapTime !== 'None' && l.LapTime !== 'NaT');
-                        let fastestLapNum: number | null = null;
-                        if (validLapsForFastest.length > 0) {
-                          fastestLapNum = validLapsForFastest.reduce((min, lap) =>
-                            parseLapTime(lap.LapTime) < parseLapTime(min.LapTime) ? lap : min
-                          ).LapNumber;
-                        }
-
                         return (
-                          <CustomDropdown
-                            key={`sidebar-lap-${num}`}
-                            label={`${d?.Abbreviation}`}
-                            icon={<span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `#${d?.TeamColor || '888'}` }} />}
-                            options={laps}
-                            value={selectedLaps[num] || null}
-                            onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))}
-                            getLabel={(l) => (
-                              <div className="flex items-center gap-1">
-                                <span>L{l.LapNumber} - {formatLapTime(l.LapTime)}</span>
-                                <TyreIcon compound={l.Compound} />
-                                {l.LapNumber === fastestLapNum && (
-                                  <Zap className="w-3.5 h-3.5 text-f1-red ml-1" title="Fastest Lap" fill="currentColor" />
-                                )}
-                              </div>
-                            )}
-                            getKey={(l) => l.LapNumber}
-                            maxItems={4}
-                            openUpwards={true}
-                          />
+                          <div key={`sidebar-lap-${num}`} className="bg-dark-bg border border-dark-border p-2 rounded-sm">
+                            <CustomDropdown label={`LAP FOR ${d?.Abbreviation}`} icon={<Timer className="w-3 h-3 text-f1-red" />} options={laps} value={selectedLaps[num] || null} onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))} getLabel={(l) => `Lap ${l.LapNumber} (${formatLapTime(l.LapTime)}) [${l.Compound}]`} getKey={(l) => l.LapNumber} maxItems={5} />
+                          </div>
                         );
                       })}
                     </div>
@@ -676,9 +621,8 @@ export default function App() {
                       return (
                         <div
                           key={`driver-status-${num}`}
-                          className="flex items-stretch gap-3 bg-dark-surface/50 border border-dark-border p-3 rounded-sm min-w-[120px]"
+                          className="flex items-stretch gap-3 bg-dark-surface/50 border border-dark-border p-2.5 rounded-sm min-w-[120px]"
                         >
-                          {/* Team Color Strip - 'shrink-0' verhindert, dass die Linie zerquetscht wird */}
                           <div
                             className="w-1.5 rounded-full shrink-0"
                             style={{
@@ -688,27 +632,24 @@ export default function App() {
                             }}
                           />
 
-                          {/* Data Container - 'flex-1' und 'min-w-0' halten die Texte in ihren Boxen */}
                           <div className="flex flex-col justify-between flex-1 gap-1 min-w-0">
 
-                            {/* Obere Reihe: Fahrer & Compound-Badge */}
-                            <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <span className="font-black text-lg tracking-tighter leading-none">{d?.Abbreviation}</span>
                                 {isDashed && <span className="text-[8px] font-mono opacity-50 border border-white/20 px-1 py-0.5 rounded-sm">DASHED</span>}
                               </div>
 
-                              {/* Reifen-Compound als sauberes Badge ausgelagert */}
                               {lap && (
                                 <div className="shrink-0 flex items-center justify-center">
+                                  {/* FIX: TyreIcon wird jetzt in der Live UI geladen! */}
                                   <TyreIcon compound={lap.Compound} />
                                 </div>
                               )}
                             </div>
 
-                            {/* Untere Reihe: Runde & Zeit */}
                             {lap && (
-                              <div className="flex flex-col mt-0.5">
+                              <div className="flex flex-col mt-0.5 min-w-0">
                                 <span className="text-[9px] font-mono opacity-40 uppercase tracking-widest truncate">
                                   Lap {lap.LapNumber}
                                 </span>
@@ -782,19 +723,18 @@ export default function App() {
       {isExporting && (
         <div className="fixed left-[-9999px] top-[-9999px]">
           <div ref={exportRef} style={{ width: '1600px', height: '900px' }} className="bg-dark-bg p-12 flex flex-col relative overflow-hidden">
-            {/* Hintergrund-Muster */}
             <div className="absolute inset-0 carbon-pattern opacity-10 pointer-events-none" />
 
-            {/* Header-Bereich: Logo/Titel Links & Fahrer-Boxen Rechts */}
             <div className="flex justify-between items-start mb-10 relative z-10">
 
-              {/* Oben Links: Logo und Grand Prix Info */}
               <div className="flex flex-col gap-6">
+                {/* FIX: crossOrigin Flag gesetzt, damit html-to-image nicht wegen CORS blockiert */}
                 <img
                   src="https://storage.googleapis.com/lap-check-images/lap_logo.png?v=3"
                   alt="Lap-Check Logo"
                   className="h-12 w-auto object-contain object-left"
                   referrerPolicy="no-referrer"
+                  crossOrigin="anonymous"
                 />
                 <div>
                   <h2 className="text-6xl font-black uppercase italic tracking-tighter leading-none mb-3">
@@ -806,7 +746,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Oben Rechts: Fahrer Info Boxen (Hochskaliertes UI-Layout) */}
               <div className="flex gap-6">
                 {selectedDrivers.map((num, idx) => {
                   const d = results.find(drv => drv.DriverNumber === num);
@@ -837,10 +776,10 @@ export default function App() {
                             {isDashed && <span className="text-sm font-mono opacity-50 border border-white/20 px-2 py-0.5 rounded-sm">DASHED</span>}
                           </div>
 
-                          {/* FIX: Hier wird nun das TyreIcon statt dem Text gerendert */}
                           {lap && (
                             <div className="shrink-0 flex items-center justify-center">
-                              <TyreIcon compound={lap.Compound} />
+                              {/* FIX: Das TyreIcon in 'large' für den riesigen Export Container */}
+                              <TyreIcon compound={lap.Compound} size="large" />
                             </div>
                           )}
                         </div>
@@ -862,7 +801,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Der eigentliche Graph */}
             <div className="flex-1 border border-dark-border bg-dark-surface/40 rounded-xl relative overflow-hidden p-8 shadow-2xl" style={{ minHeight: 0, minWidth: 0, position: 'relative' }}>
                <TelemetryChart
                  data={telemetryData}
@@ -874,7 +812,6 @@ export default function App() {
                />
             </div>
 
-            {/* Kleine Signatur unten rechts */}
             <div className="mt-6 flex justify-end">
                <span className="text-xs font-mono opacity-30 uppercase tracking-[0.3em]">
                  Generated by LapCheck // Telemetry: {viewMode === 'single' ? selectedMetric.toUpperCase() : 'SPEED'}
