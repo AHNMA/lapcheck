@@ -208,7 +208,7 @@ const TelemetryChart = React.memo(function TelemetryChart({
       return {
         name: d.Abbreviation,
         type: 'line',
-        step: metric === 'gear' ? 'end' : false,
+        step: (metric === 'gear' || metric === 'brake') ? 'end' : false,
         showSymbol: false,
         connectNulls: true,
         data: dataPoints,

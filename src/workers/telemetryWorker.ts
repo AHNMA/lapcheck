@@ -59,9 +59,23 @@ self.onmessage = async (e: MessageEvent<WorkerInput>) => {
 
         const ratio = d2 > d1 ? (dist - d1) / (d2 - d1) : 0;
         metrics.forEach(metric => {
-          const val1 = p1[metric as keyof TelemetryPoint] as number;
-          const val2 = p2[metric as keyof TelemetryPoint] as number;
-          mergedPoint[`${res.driver.Abbreviation}_${metric}`] = val1 + (val2 - val1) * ratio;
+          let val1 = Number(p1[metric as keyof TelemetryPoint] || 0);
+          let val2 = Number(p2[metric as keyof TelemetryPoint] || 0);
+
+          // FIA liefert Brake meist als 0 oder 1. Wir skalieren es für die UI auf 100%.
+          if (metric === 'brake') {
+            val1 = val1 > 0 ? 100 : 0;
+            val2 = val2 > 0 ? 100 : 0;
+          }
+
+          // Diskrete Werte (Gang & Bremse) dürfen nicht weich interpoliert werden.
+          // Wir nutzen den "Nearest Neighbor" Ansatz (harter Umschlag ab 50% der Distanz).
+          if (metric === 'gear' || metric === 'brake') {
+            mergedPoint[`${res.driver.Abbreviation}_${metric}`] = ratio < 0.5 ? val1 : val2;
+          } else {
+            // Weiche lineare Interpolation für Speed, Throttle und RPM
+            mergedPoint[`${res.driver.Abbreviation}_${metric}`] = val1 + (val2 - val1) * ratio;
+          }
         });
         mergedPoint[res.driver.Abbreviation] = true;
       });
