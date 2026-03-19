@@ -561,7 +561,22 @@ export default function App() {
                         const laps = availableLaps[num] || [];
                         const isLoadingLaps = lapQueries[idx]?.isLoading;
 
-                        if (isLoadingLaps) return <div key={num} className="text-[10px] text-center opacity-50 font-mono py-2">Loading laps...</div>;
+                        if (isLoadingLaps) {
+                          return (
+                            <CustomDropdown
+                              key={`sidebar-lap-${num}-loading`}
+                              label={`${d?.Abbreviation}`}
+                              icon={<span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `#${d?.TeamColor || '888'}` }} />}
+                              options={[]}
+                              value={null}
+                              onChange={() => {}}
+                              getLabel={() => ""}
+                              getKey={() => ""}
+                              disabled={true}
+                              placeholder="Loading laps..."
+                            />
+                          );
+                        }
                         if (laps.length === 0) return null;
 
                         return (
