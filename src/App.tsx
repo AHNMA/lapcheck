@@ -21,7 +21,9 @@ import {
   ChevronDown,
   Check,
   Download,
-  X
+  X,
+  CircleDot,
+  Zap
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { useQuery, useQueries } from '@tanstack/react-query';
@@ -67,6 +69,29 @@ const parseLapTime = (timeStr: string | null | undefined): number => {
   return (parseInt(days || '0') * 86400) + (parseInt(hours) * 3600) + (parseInt(minutes) * 60) + parseFloat(seconds);
 };
 
+// Helper für Reifen-Icons
+const getTyreColor = (compound: string) => {
+  switch (compound?.toUpperCase()) {
+    case 'SOFT': return '#FF1E1E';
+    case 'MEDIUM': return '#FFFF00';
+    case 'HARD': return '#FFFFFF';
+    case 'INTERMEDIATE': return '#32CD32';
+    case 'WET': return '#1E90FF';
+    default: return '#888888';
+  }
+};
+
+const TyreIcon = ({ compound }: { compound: string }) => {
+  const color = getTyreColor(compound);
+  return (
+    <CircleDot
+      className="w-3.5 h-3.5 inline-block mx-1"
+      style={{ color }}
+      title={compound}
+    />
+  );
+};
+
 // Custom Dropdown Component
 interface DropdownProps<T> {
   label: string;
@@ -74,7 +99,7 @@ interface DropdownProps<T> {
   options: T[];
   value: T | null;
   onChange: (value: T) => void;
-  getLabel: (option: T) => string;
+  getLabel: (option: T) => React.ReactNode;
   getKey: (option: T) => string | number;
   disabled?: boolean;
   placeholder?: string;
@@ -113,8 +138,8 @@ function CustomDropdown<T>({
           isOpen && "border-f1-red"
         )}
       >
-        <span className="truncate">{value ? getLabel(value) : placeholder}</span>
-        <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
+        <div className="truncate flex items-center gap-1">{value ? getLabel(value) : placeholder}</div>
+        <ChevronDown className={cn("w-4 h-4 transition-transform shrink-0", isOpen && "rotate-180")} />
       </button>
 
       <AnimatePresence>
@@ -134,12 +159,12 @@ function CustomDropdown<T>({
                 key={`${getKey(option)}-${idx}`}
                 onClick={() => { onChange(option); setIsOpen(false); }}
                 className={cn(
-                  "w-full text-left px-3 py-2 text-sm hover:bg-f1-red hover:text-white transition-colors flex items-center justify-between",
+                  "w-full text-left px-3 py-2 text-sm hover:bg-f1-red hover:text-white transition-colors flex items-center justify-between group",
                   value && getKey(value) === getKey(option) && "bg-f1-red/20 text-f1-red"
                 )}
               >
-                <span className="truncate">{getLabel(option)}</span>
-                {value && getKey(value) === getKey(option) && <Check className="w-4 h-4" />}
+                <div className="truncate flex items-center gap-1 flex-1">{getLabel(option)}</div>
+                {value && getKey(value) === getKey(option) && <Check className="w-4 h-4 shrink-0 ml-2" />}
               </button>
             ))}
           </motion.div>
@@ -579,8 +604,36 @@ export default function App() {
                         }
                         if (laps.length === 0) return null;
 
+                        // Finde die schnellste Runde für diesen Fahrer, um den Indikator zu setzen
+                        const validLapsForFastest = laps.filter(l => l.LapTime && l.LapTime !== 'None');
+                        let fastestLapNum: number | null = null;
+                        if (validLapsForFastest.length > 0) {
+                          fastestLapNum = validLapsForFastest.reduce((min, lap) =>
+                            parseLapTime(lap.LapTime) < parseLapTime(min.LapTime) ? lap : min
+                          ).LapNumber;
+                        }
+
                         return (
-                          <CustomDropdown key={`sidebar-lap-${num}`} label={`${d?.Abbreviation}`} icon={<span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `#${d?.TeamColor || '888'}` }} />} options={laps} value={selectedLaps[num] || null} onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))} getLabel={(l) => `L${l.LapNumber} - ${formatLapTime(l.LapTime)} [${l.Compound}]`} getKey={(l) => l.LapNumber} maxItems={4} openUpwards={true} />
+                          <CustomDropdown
+                            key={`sidebar-lap-${num}`}
+                            label={`${d?.Abbreviation}`}
+                            icon={<span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `#${d?.TeamColor || '888'}` }} />}
+                            options={laps}
+                            value={selectedLaps[num] || null}
+                            onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))}
+                            getLabel={(l) => (
+                              <div className="flex items-center gap-1">
+                                <span>L{l.LapNumber} - {formatLapTime(l.LapTime)}</span>
+                                <TyreIcon compound={l.Compound} />
+                                {l.LapNumber === fastestLapNum && (
+                                  <Zap className="w-3.5 h-3.5 text-f1-red ml-1" title="Fastest Lap" fill="currentColor" />
+                                )}
+                              </div>
+                            )}
+                            getKey={(l) => l.LapNumber}
+                            maxItems={4}
+                            openUpwards={true}
+                          />
                         );
                       })}
                     </div>
@@ -628,7 +681,10 @@ export default function App() {
                             </div>
                             {lap && (
                               <div className="flex flex-col mt-1">
-                                <span className="text-[8px] font-mono opacity-40 uppercase tracking-tighter">Lap {lap.LapNumber} ({lap.Compound})</span>
+                                <span className="text-[8px] font-mono opacity-40 uppercase tracking-tighter flex items-center gap-1">
+                                  Lap {lap.LapNumber}
+                                  <TyreIcon compound={lap.Compound} />
+                                </span>
                                 <span className="text-[11px] font-mono text-f1-red font-bold leading-none">{formatLapTime(lap.LapTime)}</span>
                               </div>
                             )}
