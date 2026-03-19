@@ -49,6 +49,7 @@ const METRIC_LABELS: Record<string, string> = {
 
 const formatLapTime = (lapTime: string | null | undefined) => {
   if (!lapTime || lapTime === 'None') return '-:--.---';
+  if (lapTime === 'NaT') return 'In/Out Lap';
   const match = lapTime.match(/(?:(\d+) days? )?(\d+):(\d+):([\d.]+)/);
   if (match) {
     const [, , hours, minutes, secondsStr] = match;
@@ -62,7 +63,7 @@ const formatLapTime = (lapTime: string | null | undefined) => {
 
 // Hilfsfunktion zum Berechnen der schnellsten Runde (in Sekunden)
 const parseLapTime = (timeStr: string | null | undefined): number => {
-  if (!timeStr || timeStr === 'None') return Infinity;
+  if (!timeStr || timeStr === 'None' || timeStr === 'NaT') return Infinity;
   const match = timeStr.match(/(?:(\d+) days? )?(\d+):(\d+):([\d.]+)/);
   if (!match) return Infinity;
   const [, days, hours, minutes, seconds] = match;
@@ -421,7 +422,7 @@ export default function App() {
 
       selectedDrivers.forEach(num => {
         if (!nextLaps[num] && availableLaps[num] && availableLaps[num].length > 0) {
-          const validLaps = availableLaps[num].filter(l => l.LapTime && l.LapTime !== 'None');
+          const validLaps = availableLaps[num].filter(l => l.LapTime && l.LapTime !== 'None' && l.LapTime !== 'NaT');
 
           if (validLaps.length > 0) {
             const fastest = validLaps.reduce((min, lap) =>
@@ -605,7 +606,7 @@ export default function App() {
                         if (laps.length === 0) return null;
 
                         // Finde die schnellste Runde für diesen Fahrer, um den Indikator zu setzen
-                        const validLapsForFastest = laps.filter(l => l.LapTime && l.LapTime !== 'None');
+                        const validLapsForFastest = laps.filter(l => l.LapTime && l.LapTime !== 'None' && l.LapTime !== 'NaT');
                         let fastestLapNum: number | null = null;
                         if (validLapsForFastest.length > 0) {
                           fastestLapNum = validLapsForFastest.reduce((min, lap) =>
