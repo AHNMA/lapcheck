@@ -1,21 +1,23 @@
 from playwright.sync_api import sync_playwright
 
-def verify_app_loads(page):
-    page.goto("http://localhost:3000/")
-
-    # Warte darauf, dass die Telemetrie-App geladen wird und kein Loading-Spinner mehr da ist
-    # Wir erwarten "Initializing" im Startbildschirm (sobald die Daten noch laden),
-    # aber wir warten stattdessen lieber auf den Text "Awaiting Telemetry Input" oder "Live Analysis"
-    page.wait_for_timeout(5000) # Grobe Zeit, um die App zu initialisieren
-
-    # Erstelle Screenshot
-    page.screenshot(path="verification.png")
-
-if __name__ == "__main__":
+def verify_frontend():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-        try:
-            verify_app_loads(page)
-        finally:
-            browser.close()
+
+        # Gehe zur App
+        page.goto("http://localhost:3000/")
+
+        # Warte, bis die App geladen ist und zumindest die Year-Auswahl sichtbar ist
+        page.wait_for_selector("text=01. Year", timeout=15000)
+
+        # Warte einen Moment, damit die Daten geladen werden und das Layout sich anpasst
+        page.wait_for_timeout(3000)
+
+        # Mache einen Screenshot
+        page.screenshot(path="verification.png", full_page=True)
+
+        browser.close()
+
+if __name__ == "__main__":
+    verify_frontend()

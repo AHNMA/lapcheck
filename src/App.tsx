@@ -489,15 +489,15 @@ export default function App() {
       </AnimatePresence>
 
       <main className="flex flex-col-reverse lg:grid lg:grid-cols-[380px_1fr] flex-1 lg:overflow-hidden">
-        <aside className="border-t lg:border-t-0 lg:border-r border-dark-border lg:h-full carbon-pattern overflow-y-auto no-scrollbar relative flex flex-col">
-          <div className="p-3 lg:p-4 h-full flex flex-col relative z-10">
-            <div className="flex items-center justify-between mb-4">
+        <aside className="border-t lg:border-t-0 lg:border-r border-dark-border lg:h-full carbon-pattern lg:overflow-hidden no-scrollbar relative flex flex-col">
+          <div className="p-3 lg:p-4 h-full flex flex-col relative z-10 lg:overflow-hidden">
+            <div className="flex items-center justify-between mb-4 shrink-0">
               <img src="https://storage.googleapis.com/lap-check-images/lap_logo.png?v=3" alt="Lap-Check Logo" className="h-10 w-auto" referrerPolicy="no-referrer" />
               {isAnyLoading && <Loader2 className="w-5 h-5 animate-spin text-f1-red" />}
             </div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col space-y-3 bg-dark-surface/40 p-3 rounded-xl lg:bg-transparent lg:p-0 lg:rounded-none border border-dark-border lg:border-0 mb-2 lg:mb-0 min-h-0">
-              <div className="space-y-3">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col gap-3 bg-dark-surface/40 p-3 rounded-xl lg:bg-transparent lg:p-0 lg:rounded-none border border-dark-border lg:border-0 mb-2 lg:mb-0 min-h-0 lg:overflow-hidden">
+              <div className="space-y-3 shrink-0">
                 <CustomDropdown label="01. Year" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={YEARS} value={year} onChange={setYear} getLabel={(y) => y.toString()} getKey={(y) => y} disabled={loadingMeetings} />
                 <CustomDropdown label="02. Grand Prix" icon={<MapPin className="w-3 h-3 text-f1-red" />} options={meetings} value={selectedMeeting} onChange={setSelectedMeeting} getLabel={(m) => m.meeting_name} getKey={(m) => m.round} placeholder="Select Grand Prix" disabled={loadingSessions} />
                 <AnimatePresence>
@@ -511,8 +511,8 @@ export default function App() {
 
               <AnimatePresence>
                 {selectedSession && results.length > 0 && (
-                  <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="pt-4 border-t border-dark-border">
-                    <div className="flex items-center justify-between mb-3">
+                  <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="pt-3 border-t border-dark-border flex-1 flex flex-col min-h-0">
+                    <div className="flex items-center justify-between mb-2 shrink-0">
                       <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em]">
                         <Users className="w-3 h-3 text-f1-red" />
                         <span>04. Drivers ({selectedDrivers.length}/2)</span>
@@ -520,9 +520,9 @@ export default function App() {
                       {selectedDrivers.length > 0 && <button onClick={() => { setSelectedDrivers([]); setSelectedLaps({}); }} className="text-[10px] font-mono uppercase text-f1-red hover:underline">Reset</button>}
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-2 gap-1.5 flex-1 min-h-0 auto-rows-[1fr]">
                       {results.map((d) => (
-                        <button key={d.DriverNumber} onClick={() => handleDriverToggle(d.DriverNumber)} className={cn("relative overflow-hidden group flex items-center justify-between px-2 py-1.5 border rounded-sm transition-all", selectedDrivers.includes(d.DriverNumber) ? "bg-f1-red/10 text-white border-f1-red" : "bg-dark-bg border-dark-border hover:border-f1-red/50")}>
+                        <button key={d.DriverNumber} onClick={() => handleDriverToggle(d.DriverNumber)} className={cn("relative h-full overflow-hidden group flex items-center justify-between px-2 py-1 border rounded-sm transition-all", selectedDrivers.includes(d.DriverNumber) ? "bg-f1-red/10 text-white border-f1-red" : "bg-dark-bg border-dark-border hover:border-f1-red/50")}>
                           <div className="absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5" style={{ backgroundColor: `#${d.TeamColor || '888'}` }} />
                           <div className="pl-1.5 flex items-center gap-2">
                             <span className="font-mono font-bold text-[10px] w-3 text-center text-white/40">{d.Position}</span>
@@ -535,8 +535,8 @@ export default function App() {
                 )}
 
                 {selectedDrivers.length > 0 && (
-                  <motion.section key="sidebar-lap-selection" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mt-4 pt-4 border-t border-dark-border">
-                    <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em] mb-3">
+                  <motion.section key="sidebar-lap-selection" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="pt-3 border-t border-dark-border shrink-0">
+                    <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em] mb-2">
                       <Timer className="w-3 h-3 text-f1-red" />
                       <span>05. Lap Selection</span>
                     </div>
@@ -546,13 +546,11 @@ export default function App() {
                         const laps = availableLaps[num] || [];
                         const isLoadingLaps = lapQueries[idx]?.isLoading;
 
-                        if (isLoadingLaps) return <div key={num} className="text-xs text-center opacity-50 font-mono py-2">Loading laps...</div>;
+                        if (isLoadingLaps) return <div key={num} className="text-[10px] text-center opacity-50 font-mono py-2">Loading laps...</div>;
                         if (laps.length === 0) return null;
 
                         return (
-                          <div key={`sidebar-lap-${num}`} className="bg-dark-bg border border-dark-border p-2 rounded-sm">
-                            <CustomDropdown label={`LAP FOR ${d?.Abbreviation}`} icon={<Timer className="w-3 h-3 text-f1-red" />} options={laps} value={selectedLaps[num] || null} onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))} getLabel={(l) => `Lap ${l.LapNumber} (${formatLapTime(l.LapTime)}) [${l.Compound}]`} getKey={(l) => l.LapNumber} maxItems={5} />
-                          </div>
+                          <CustomDropdown key={`sidebar-lap-${num}`} label={`${d?.Abbreviation}`} icon={<span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: `#${d?.TeamColor || '888'}` }} />} options={laps} value={selectedLaps[num] || null} onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))} getLabel={(l) => `L${l.LapNumber} - ${formatLapTime(l.LapTime)} [${l.Compound}]`} getKey={(l) => l.LapNumber} maxItems={4} openUpwards={true} />
                         );
                       })}
                     </div>
