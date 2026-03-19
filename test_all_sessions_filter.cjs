@@ -1,12 +1,11 @@
-const https = require('https');
-https.get('https://api.openf1.org/v1/sessions?year=2024', (res) => {
+const http = require('http');
+http.get('http://178.104.33.41:8000/sessions/2024/Australian%20Grand%20Prix', (res) => {
   let data = '';
-  res.on('data', (chunk) => data += chunk);
+  res.on('data', chunk => data += chunk);
   res.on('end', () => {
-    const sessions = JSON.parse(data);
+    const json = JSON.parse(data);
     const now = new Date();
-    const pastSessions = sessions.filter(s => new Date(s.date_start) <= now);
-    console.log('Total sessions:', sessions.length);
-    console.log('Past sessions:', pastSessions.length);
+    const pastSessions = json.sessions.filter(s => new Date(s.session_date.replace(' ', 'T')) <= now).sort((a, b) => new Date(a.session_date.replace(' ', 'T')).getTime() - new Date(b.session_date.replace(' ', 'T')).getTime());
+    console.log(pastSessions);
   });
 });
