@@ -620,8 +620,8 @@ export default function App() {
                         <button key={d.DriverNumber} onClick={() => handleDriverToggle(d.DriverNumber)} className={cn("relative overflow-hidden group flex items-center justify-between px-2 py-1.5 border rounded-sm transition-all h-full", selectedDrivers.includes(d.DriverNumber) ? "bg-f1-red/10 text-white border-f1-red" : "bg-dark-bg border-dark-border hover:border-f1-red/50")}>
                           <div className="absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5" style={{ backgroundColor: `#${d.TeamColor || '888'}` }} />
                           <div className="pl-1.5 flex items-center gap-2">
-                            <span className="font-mono font-bold text-[10px] w-3 text-center text-white/40">{d.Position}</span>
-                            <span className="font-black uppercase tracking-tighter text-xs">{d.Abbreviation}</span>
+                            <span className="font-mono font-bold text-[10px] w-3 text-center text-white/40 leading-none mt-[2px]">{d.Position}</span>
+                            <span className="font-black uppercase tracking-tighter text-xs leading-none mt-[2px]">{d.Abbreviation}</span>
                           </div>
                         </button>
                       ))}
