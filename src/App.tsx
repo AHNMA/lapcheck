@@ -637,86 +637,106 @@ export default function App() {
                   </motion.section>
                 )}
 
-                {selectedDrivers.length > 0 && (
-                  <motion.section key="sidebar-lap-selection" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mt-4 pt-4 border-t border-dark-border shrink-0">
-                    <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em] mb-3">
-                      <Timer className="w-3 h-3 text-f1-red" />
-                      <span>05. Lap Selection</span>
-                    </div>
-                    <div className="space-y-2">
-                      {selectedDrivers.map((num, idx) => {
-                        const d = results.find(drv => drv.DriverNumber === num);
-                        const laps = availableLaps[num] || [];
-                        const isLoadingLaps = lapQueries[idx]?.isLoading;
+                <motion.section key="sidebar-lap-selection" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={cn("mt-4 pt-4 border-t border-dark-border shrink-0 transition-opacity", selectedDrivers.length === 0 && "opacity-50 pointer-events-none")}>
+                  <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em] mb-3">
+                    <Timer className="w-3 h-3 text-f1-red" />
+                    <span>05. Lap Selection</span>
+                  </div>
+                  <div className="space-y-2">
+                    {selectedDrivers.length === 0 && (
+                      <div className="text-xs text-center opacity-50 font-mono py-2 bg-dark-bg border border-dark-border rounded-sm">Select a driver first</div>
+                    )}
 
-                        if (isLoadingLaps) return <div key={num} className="text-xs text-center opacity-50 font-mono py-2">Loading laps...</div>;
-                        if (laps.length === 0) return null;
+                    {/* Render active lap dropdowns */}
+                    {selectedDrivers.map((num, idx) => {
+                      const d = results.find(drv => drv.DriverNumber === num);
+                      const laps = availableLaps[num] || [];
+                      const isLoadingLaps = lapQueries[idx]?.isLoading;
 
-                        // Schnellste Runde berechnen, um sie im Dropdown zu markieren
-                        const validLaps = laps.filter(l => l.LapTime && l.LapTime !== 'None' && l.LapTime !== 'NaT');
-                        const fastestLap = validLaps.length > 0 ? validLaps.reduce((min, lap) => parseLapTime(lap.LapTime) < parseLapTime(min.LapTime) ? lap : min) : null;
+                      if (isLoadingLaps) return <div key={num} className="text-xs text-center opacity-50 font-mono py-2 bg-dark-bg border border-dark-border rounded-sm">Loading laps...</div>;
+                      if (laps.length === 0) return null;
 
-                        return (
-                          <div key={`sidebar-lap-${num}`} className="bg-dark-bg border border-dark-border p-2 rounded-sm">
-                            <CustomDropdown
-                              label={`LAP FOR ${d?.Abbreviation}`}
-                              icon={<Timer className="w-3 h-3 text-f1-red" />}
-                              options={laps}
-                              value={selectedLaps[num] || null}
-                              onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))}
-                              getLabel={(l) => `Lap ${l.LapNumber} (${formatLapTime(l.LapTime)})`}
-                              getKey={(l) => l.LapNumber}
-                              maxItems={5}
-                              autoPosition={true}
-                              renderSelectedValue={(l) => {
-                                const isFastest = fastestLap && l.LapNumber === fastestLap.LapNumber;
-                                return (
-                                  <div className="flex items-center justify-between w-full h-full">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-mono text-sm leading-none mt-[2px]">Lap {l.LapNumber}</span>
-                                      <span className={cn("font-mono text-xs leading-none mt-[2px]", isFastest ? "text-[#b138ff] font-bold" : "text-white/60")}>
-                                        {formatLapTime(l.LapTime)}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      {isFastest && (
-                                        <span className="text-[8px] text-[#b138ff] font-bold tracking-widest uppercase leading-none mt-[2px]">
-                                          Fastest
-                                        </span>
-                                      )}
-                                      <TyreIcon compound={l.Compound} />
-                                    </div>
+                      // Schnellste Runde berechnen, um sie im Dropdown zu markieren
+                      const validLaps = laps.filter(l => l.LapTime && l.LapTime !== 'None' && l.LapTime !== 'NaT');
+                      const fastestLap = validLaps.length > 0 ? validLaps.reduce((min, lap) => parseLapTime(lap.LapTime) < parseLapTime(min.LapTime) ? lap : min) : null;
+
+                      return (
+                        <div key={`sidebar-lap-${num}`} className="bg-dark-bg border border-dark-border p-2 rounded-sm">
+                          <CustomDropdown
+                            label={`LAP FOR ${d?.Abbreviation}`}
+                            icon={<Timer className="w-3 h-3 text-f1-red" />}
+                            options={laps}
+                            value={selectedLaps[num] || null}
+                            onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))}
+                            getLabel={(l) => `Lap ${l.LapNumber} (${formatLapTime(l.LapTime)})`}
+                            getKey={(l) => l.LapNumber}
+                            maxItems={5}
+                            autoPosition={true}
+                            renderSelectedValue={(l) => {
+                              const isFastest = fastestLap && l.LapNumber === fastestLap.LapNumber;
+                              return (
+                                <div className="flex items-center justify-between w-full h-full">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-sm leading-none mt-[2px]">Lap {l.LapNumber}</span>
+                                    <span className={cn("font-mono text-xs leading-none mt-[2px]", isFastest ? "text-[#b138ff] font-bold" : "text-white/60")}>
+                                      {formatLapTime(l.LapTime)}
+                                    </span>
                                   </div>
-                                );
-                              }}
-                              renderOption={(l) => {
-                                const isFastest = fastestLap && l.LapNumber === fastestLap.LapNumber;
-                                return (
-                                  <div className="flex items-center justify-between w-full h-full">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-mono text-sm w-12 leading-none mt-[2px]">Lap {l.LapNumber}</span>
-                                      <span className={cn("font-mono text-xs leading-none mt-[2px]", isFastest ? "text-[#b138ff] font-bold" : "text-white/60")}>
-                                        {formatLapTime(l.LapTime)}
+                                  <div className="flex items-center gap-2">
+                                    {isFastest && (
+                                      <span className="text-[8px] text-[#b138ff] font-bold tracking-widest uppercase leading-none mt-[2px]">
+                                        Fastest
                                       </span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      {isFastest && (
-                                        <span className="text-[8px] text-[#b138ff] font-bold tracking-widest uppercase leading-none mt-[2px]">
-                                          Fastest
-                                        </span>
-                                      )}
-                                      <TyreIcon compound={l.Compound} />
-                                    </div>
+                                    )}
+                                    <TyreIcon compound={l.Compound} />
                                   </div>
-                                );
-                              }}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </motion.section>
-                )}
+                                </div>
+                              );
+                            }}
+                            renderOption={(l) => {
+                              const isFastest = fastestLap && l.LapNumber === fastestLap.LapNumber;
+                              return (
+                                <div className="flex items-center justify-between w-full h-full">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-sm w-12 leading-none mt-[2px]">Lap {l.LapNumber}</span>
+                                    <span className={cn("font-mono text-xs leading-none mt-[2px]", isFastest ? "text-[#b138ff] font-bold" : "text-white/60")}>
+                                      {formatLapTime(l.LapTime)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {isFastest && (
+                                      <span className="text-[8px] text-[#b138ff] font-bold tracking-widest uppercase leading-none mt-[2px]">
+                                        Fastest
+                                      </span>
+                                    )}
+                                    <TyreIcon compound={l.Compound} />
+                                  </div>
+                                </div>
+                              );
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+
+                    {/* Render disabled placeholder dropdown for 2nd driver if only 1 is selected */}
+                    {selectedDrivers.length === 1 && (
+                      <div className="bg-dark-bg/50 border border-dark-border/50 p-2 rounded-sm opacity-50 pointer-events-none">
+                        <CustomDropdown
+                          label="LAP FOR DRIVER 2"
+                          icon={<Timer className="w-3 h-3 text-f1-red/50" />}
+                          options={[]}
+                          value={null}
+                          onChange={() => {}}
+                          getLabel={() => ""}
+                          getKey={() => ""}
+                          placeholder="Awaiting Selection"
+                          disabled={true}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </motion.section>
               </AnimatePresence>
             </motion.div>
           </div>
