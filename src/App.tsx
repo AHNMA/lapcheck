@@ -551,17 +551,6 @@ export default function App() {
     }
   };
 
-  // TEMPORÄRER DEBUG LOGGER
-  useEffect(() => {
-    console.log("🛑 [React State Update]:", {
-      isAnyLoading,
-      allLapsReady,
-      selectedDriversOrder: selectedDrivers,
-      selectedLapsKeys: Object.keys(selectedLaps),
-      telemetryDataLength: telemetryData?.length || 0
-    });
-  }, [isAnyLoading, allLapsReady, selectedDrivers, selectedLaps, telemetryData]);
-
   return (
     <div className="min-h-screen lg:h-screen lg:w-screen bg-dark-bg text-white font-sans selection:bg-f1-red selection:text-white lg:overflow-hidden flex flex-col relative">
       <AnimatePresence>
@@ -756,12 +745,12 @@ export default function App() {
         <section className="flex-1 p-4 lg:p-6 flex flex-col bg-dark-bg lg:overflow-hidden">
           <AnimatePresence mode="wait">
             {!selectedSession ? (
-              <motion.div key="awaiting-input" initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} className="flex-1 min-h-[300px] lg:min-h-0 flex flex-col items-center justify-center text-center bg-dark-surface/20 p-8 rounded-xl border border-dark-border lg:bg-transparent lg:border-0">
+              <motion.div key="awaiting-input" initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} exit={{ opacity: 0 }} className="flex-1 min-h-[300px] lg:min-h-0 flex flex-col items-center justify-center text-center bg-dark-surface/20 p-8 rounded-xl border border-dark-border lg:bg-transparent lg:border-0">
                 <Gauge className="w-24 h-24 mb-6" />
                 <p className="text-2xl font-black uppercase italic tracking-tighter">Awaiting Telemetry Input</p>
               </motion.div>
             ) : telemetryData.length > 0 ? (
-              <motion.div key="telemetry-dashboard" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col min-h-0">
+              <motion.div key="telemetry-dashboard" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="flex-1 flex flex-col min-h-0">
               <div className="mb-4 flex flex-col items-center text-center lg:flex-row lg:items-end lg:text-left justify-between gap-4">
                 <div className="flex flex-col items-center lg:items-start">
                   <div className="flex items-center gap-2 text-f1-red text-[10px] font-mono font-bold uppercase tracking-[0.2em] mb-1">
@@ -868,7 +857,7 @@ export default function App() {
               </div>
             </motion.div>
             ) : (
-              <motion.div key="loading-telemetry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 min-h-[300px] lg:min-h-0 flex items-center justify-center">
+              <motion.div key="loading-telemetry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 min-h-[300px] lg:min-h-0 flex items-center justify-center">
                 <div className="text-center space-y-4">
                   <div className="inline-block p-4 border border-dark-border rounded-full animate-pulse"><Timer className="w-8 h-8 text-f1-red" /></div>
                   <p className="text-xs font-mono uppercase tracking-[0.3em] opacity-50 max-w-md mx-auto text-center">
