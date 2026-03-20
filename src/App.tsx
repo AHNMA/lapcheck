@@ -162,7 +162,7 @@ function CustomDropdown<T>({
         )}
       >
         <div className="truncate flex-1 min-w-0 text-left mr-2">
-          {value ? (renderSelectedValue ? renderSelectedValue(value) : getLabel(value)) : placeholder}
+          {value ? (renderSelectedValue ? renderSelectedValue(value) : <span className="inline-block leading-none mt-[1px]">{getLabel(value)}</span>) : <span className="inline-block leading-none mt-[1px]">{placeholder}</span>}
         </div>
         <ChevronDown className={cn("w-4 h-4 transition-transform shrink-0", isOpen && "rotate-180")} />
       </button>
@@ -188,7 +188,7 @@ function CustomDropdown<T>({
                   value && getKey(value) === getKey(option) && "bg-f1-red/20 text-f1-red"
                 )}
               >
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 flex items-center">
                   {/* Nutze renderOption falls vorhanden, sonst Fallback auf reinen Text */}
                   {renderOption ? renderOption(option) : <span className="truncate">{getLabel(option)}</span>}
                 </div>
