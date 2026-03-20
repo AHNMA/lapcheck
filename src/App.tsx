@@ -229,6 +229,7 @@ const TelemetryChart = React.memo(function TelemetryChart({
   }, [data, metric, results, selectedDrivers]);
 
   const option = {
+    // Force a fixed layout to align all charts vertically (same starting point for X-axis)
     grid: { top: 40, right: 20, bottom: showXAxis ? 30 : 10, left: 75, containLabel: false },
     tooltip: {
       trigger: 'axis',
@@ -236,7 +237,12 @@ const TelemetryChart = React.memo(function TelemetryChart({
       backgroundColor: '#151619',
       borderColor: '#2D2E33',
       textStyle: { color: '#fff', fontFamily: 'monospace', fontSize: 10 },
-      valueFormatter: (value: number) => value !== undefined && value !== null ? value.toFixed(metric === 'gear' ? 0 : 1) : '-'
+      valueFormatter: (value: number) => {
+        if (value === undefined || value === null) return '-';
+        if (metric === 'speed') return value.toFixed(2);
+        if (metric === 'rpm') return value.toFixed(0);
+        return value.toFixed(metric === 'gear' ? 0 : 1);
+      }
     },
     legend: { show: true, top: 0, right: 20, textStyle: { color: '#ffffff90', fontFamily: 'monospace', fontSize: 10 }, icon: 'circle' },
     dataZoom: [{ type: 'inside', xAxisIndex: 0, zoomOnMouseWheel: true, moveOnMouseMove: true }],
@@ -252,7 +258,19 @@ const TelemetryChart = React.memo(function TelemetryChart({
       nameTextStyle: { color: '#444', fontFamily: 'monospace', fontSize: 9 },
       min: metric === 'gear' ? 0 : (metric === 'throttle' || metric === 'brake' ? 0 : 'dataMin'),
       max: metric === 'gear' ? 8 : (metric === 'throttle' || metric === 'brake' ? 100 : 'dataMax'),
-      axisLabel: { color: '#666', fontFamily: 'monospace', fontSize: 9 },
+      axisLabel: {
+        color: '#666',
+        fontFamily: 'monospace',
+        fontSize: 9,
+        formatter: (value: number) => {
+          if (metric === 'speed') return value.toFixed(2);
+          if (metric === 'rpm') return value.toFixed(0);
+          return value.toString();
+        },
+        // We set a fixed width and overflow to prevent the Y-axis labels from taking varying widths and pushing the X-axis differently.
+        width: 40,
+        overflow: 'break'
+      },
       splitLine: { lineStyle: { color: '#1A1B1E', type: 'dashed' } }
     },
     series: seriesData
