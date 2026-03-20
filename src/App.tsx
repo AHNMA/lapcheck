@@ -672,7 +672,7 @@ export default function App() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                       {isFastest && (
-                                        <span className="flex items-center justify-center text-[8px] bg-[#b138ff]/20 text-[#b138ff] px-1 py-0.5 rounded-sm font-bold tracking-widest uppercase leading-none mt-[1px]">
+                                        <span className="inline-flex items-center justify-center text-[8px] bg-[#b138ff]/20 text-[#b138ff] px-1 py-0.5 rounded-sm font-bold tracking-widest uppercase leading-none mt-[1px] pt-[1px]">
                                           Fastest
                                         </span>
                                       )}
@@ -693,7 +693,7 @@ export default function App() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                       {isFastest && (
-                                        <span className="flex items-center justify-center text-[8px] bg-[#b138ff]/20 text-[#b138ff] px-1 py-0.5 rounded-sm font-bold tracking-widest uppercase leading-none mt-[1px]">
+                                        <span className="inline-flex items-center justify-center text-[8px] bg-[#b138ff]/20 text-[#b138ff] px-1 py-0.5 rounded-sm font-bold tracking-widest uppercase leading-none mt-[1px] pt-[1px]">
                                           Fastest
                                         </span>
                                       )}
