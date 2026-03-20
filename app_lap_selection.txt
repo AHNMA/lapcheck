@@ -1,0 +1,111 @@
+634-                        </button>
+635-                      ))}
+636-                    </div>
+637-                  </motion.section>
+638-                )}
+639-
+640-                {selectedDrivers.length > 0 && (
+641-                  <motion.section key="sidebar-lap-selection" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mt-4 pt-4 border-t border-dark-border shrink-0">
+642-                    <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em] mb-3">
+643-                      <Timer className="w-3 h-3 text-f1-red" />
+644:                      <span>05. Lap Selection</span>
+645-                    </div>
+646-                    <div className="space-y-2">
+647-                      {selectedDrivers.map((num, idx) => {
+648-                        const d = results.find(drv => drv.DriverNumber === num);
+649-                        const laps = availableLaps[num] || [];
+650-                        const isLoadingLaps = lapQueries[idx]?.isLoading;
+651-
+652-                        if (isLoadingLaps) return <div key={num} className="text-xs text-center opacity-50 font-mono py-2">Loading laps...</div>;
+653-                        if (laps.length === 0) return null;
+654-
+655-                        // Schnellste Runde berechnen, um sie im Dropdown zu markieren
+656-                        const validLaps = laps.filter(l => l.LapTime && l.LapTime !== 'None' && l.LapTime !== 'NaT');
+657-                        const fastestLap = validLaps.length > 0 ? validLaps.reduce((min, lap) => parseLapTime(lap.LapTime) < parseLapTime(min.LapTime) ? lap : min) : null;
+658-
+659-                        return (
+660-                          <div key={`sidebar-lap-${num}`} className="bg-dark-bg border border-dark-border p-2 rounded-sm">
+661-                            <CustomDropdown
+662-                              label={`LAP FOR ${d?.Abbreviation}`}
+663-                              icon={<Timer className="w-3 h-3 text-f1-red" />}
+664-                              options={laps}
+665-                              value={selectedLaps[num] || null}
+666-                              onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))}
+667-                              getLabel={(l) => `Lap ${l.LapNumber} (${formatLapTime(l.LapTime)})`}
+668-                              getKey={(l) => l.LapNumber}
+669-                              maxItems={5}
+670-                              autoPosition={true}
+671-                              renderSelectedValue={(l) => {
+672-                                const isFastest = fastestLap && l.LapNumber === fastestLap.LapNumber;
+673-                                return (
+674-                                  <div className="flex items-center justify-between w-full h-full">
+675-                                    <div className="flex items-center gap-2">
+676-                                      <span className="font-mono text-sm leading-none mt-[2px]">Lap {l.LapNumber}</span>
+677-                                      <span className={cn("font-mono text-xs leading-none mt-[2px]", isFastest ? "text-[#b138ff] font-bold" : "text-white/60")}>
+678-                                        {formatLapTime(l.LapTime)}
+679-                                      </span>
+680-                                    </div>
+681-                                    <div className="flex items-center gap-2">
+682-                                      {isFastest && (
+683-                                        <span className="text-[8px] text-[#b138ff] font-bold tracking-widest uppercase leading-none mt-[2px]">
+684-                                          Fastest
+685-                                        </span>
+686-                                      )}
+687-                                      <TyreIcon compound={l.Compound} />
+688-                                    </div>
+689-                                  </div>
+690-                                );
+691-                              }}
+692-                              renderOption={(l) => {
+693-                                const isFastest = fastestLap && l.LapNumber === fastestLap.LapNumber;
+694-                                return (
+695-                                  <div className="flex items-center justify-between w-full h-full">
+696-                                    <div className="flex items-center gap-2">
+697-                                      <span className="font-mono text-sm w-12 leading-none mt-[2px]">Lap {l.LapNumber}</span>
+698-                                      <span className={cn("font-mono text-xs leading-none mt-[2px]", isFastest ? "text-[#b138ff] font-bold" : "text-white/60")}>
+699-                                        {formatLapTime(l.LapTime)}
+700-                                      </span>
+701-                                    </div>
+702-                                    <div className="flex items-center gap-2">
+703-                                      {isFastest && (
+704-                                        <span className="text-[8px] text-[#b138ff] font-bold tracking-widest uppercase leading-none mt-[2px]">
+705-                                          Fastest
+706-                                        </span>
+707-                                      )}
+708-                                      <TyreIcon compound={l.Compound} />
+709-                                    </div>
+710-                                  </div>
+711-                                );
+712-                              }}
+713-                            />
+714-                          </div>
+715-                        );
+716-                      })}
+717-                    </div>
+718-                  </motion.section>
+719-                )}
+720-              </AnimatePresence>
+721-            </motion.div>
+722-          </div>
+723-        </aside>
+724-
+725-        <section className="flex-1 p-4 lg:p-6 flex flex-col bg-dark-bg lg:overflow-hidden">
+726-          <AnimatePresence mode="wait">
+727-            {!selectedSession ? (
+728-              <motion.div key="awaiting-input" initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} className="flex-1 min-h-[300px] lg:min-h-0 flex flex-col items-center justify-center text-center bg-dark-surface/20 p-8 rounded-xl border border-dark-border lg:bg-transparent lg:border-0">
+729-                <Gauge className="w-24 h-24 mb-6" />
+730-                <p className="text-2xl font-black uppercase italic tracking-tighter">Awaiting Telemetry Input</p>
+731-              </motion.div>
+732-            ) : telemetryData.length > 0 ? (
+733-              <motion.div key="telemetry-dashboard" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col min-h-0">
+734-              <div className="mb-4 flex flex-col items-center text-center lg:flex-row lg:items-end lg:text-left justify-between gap-4">
+735-                <div className="flex flex-col items-center lg:items-start">
+736-                  <div className="flex items-center gap-2 text-f1-red text-[10px] font-mono font-bold uppercase tracking-[0.2em] mb-1">
+737-                    <span className="w-2 h-2 bg-f1-red rounded-full animate-pulse" /> Live Analysis
+738-                  </div>
+739-                  <h2 className="text-2xl lg:text-3xl font-black uppercase italic tracking-tighter leading-tight lg:leading-none">{selectedMeeting?.meeting_name}</h2>
+740-                  <p className="text-sm font-mono opacity-50 uppercase mt-2">{selectedSession?.session_name}</p>
+741-                </div>
+742-
+743-                <div className="flex items-stretch gap-3">
+744-                  <div className="flex gap-2">
