@@ -551,6 +551,17 @@ export default function App() {
     }
   };
 
+  // TEMPORÄRER DEBUG LOGGER
+  useEffect(() => {
+    console.log("🛑 [React State Update]:", {
+      isAnyLoading,
+      allLapsReady,
+      selectedDriversOrder: selectedDrivers,
+      selectedLapsKeys: Object.keys(selectedLaps),
+      telemetryDataLength: telemetryData?.length || 0
+    });
+  }, [isAnyLoading, allLapsReady, selectedDrivers, selectedLaps, telemetryData]);
+
   return (
     <div className="min-h-screen lg:h-screen lg:w-screen bg-dark-bg text-white font-sans selection:bg-f1-red selection:text-white lg:overflow-hidden flex flex-col relative">
       <AnimatePresence>
