@@ -105,17 +105,20 @@ interface DropdownProps<T> {
   onChange: (value: T) => void;
   getLabel: (option: T) => string;
   getKey: (option: T) => string | number;
-  renderOption?: (option: T) => React.ReactNode; // NEU: Erlaubt Custom-Rendering in der Liste
+  renderOption?: (option: T) => React.ReactNode;
+  renderSelectedValue?: (option: T) => React.ReactNode;
   disabled?: boolean;
   placeholder?: string;
   openUpwards?: boolean;
+  autoPosition?: boolean;
   maxItems?: number;
 }
 
 function CustomDropdown<T>({ 
-  label, icon, options, value, onChange, getLabel, getKey, renderOption, disabled, placeholder = "Select...", openUpwards = false, maxItems = 7
+  label, icon, options, value, onChange, getLabel, getKey, renderOption, renderSelectedValue, disabled, placeholder = "Select...", openUpwards = false, autoPosition = false, maxItems = 7
 }: DropdownProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
+  const [actualOpenUpwards, setActualOpenUpwards] = useState(openUpwards);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -126,6 +129,22 @@ function CustomDropdown<T>({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const toggleDropdown = () => {
+    if (!isOpen && autoPosition && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const requiredHeight = maxItems * 40 + 10;
+      if (spaceBelow < requiredHeight && rect.top > requiredHeight) {
+        setActualOpenUpwards(true);
+      } else {
+        setActualOpenUpwards(false);
+      }
+    } else if (!isOpen && !autoPosition) {
+      setActualOpenUpwards(openUpwards);
+    }
+    setIsOpen(!isOpen);
+  };
+
   return (
     <div className="relative" ref={containerRef}>
       <div className="flex items-center gap-2 mb-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em]">
@@ -135,26 +154,28 @@ function CustomDropdown<T>({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleDropdown}
         className={cn(
           "w-full bg-dark-bg border border-dark-border px-3 py-2.5 text-sm flex items-center justify-between transition-all rounded-sm",
           disabled ? "opacity-30 cursor-not-allowed" : "hover:border-f1-red/50 cursor-pointer",
           isOpen && "border-f1-red"
         )}
       >
-        <span className="truncate">{value ? getLabel(value) : placeholder}</span>
-        <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
+        <div className="truncate flex-1 min-w-0 text-left mr-2">
+          {value ? (renderSelectedValue ? renderSelectedValue(value) : getLabel(value)) : placeholder}
+        </div>
+        <ChevronDown className={cn("w-4 h-4 transition-transform shrink-0", isOpen && "rotate-180")} />
       </button>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: openUpwards ? -5 : 5 }}
+            initial={{ opacity: 0, y: actualOpenUpwards ? -5 : 5 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: openUpwards ? -5 : 5 }}
+            exit={{ opacity: 0, y: actualOpenUpwards ? -5 : 5 }}
             className={cn(
               "absolute z-[100] w-full bg-dark-surface border border-dark-border shadow-2xl overflow-y-auto rounded-sm",
-              openUpwards ? "bottom-full mb-1" : "mt-1"
+              actualOpenUpwards ? "bottom-full mb-1" : "mt-1"
             )}
             style={{ maxHeight: `${maxItems * 40}px` }}
           >
@@ -568,8 +589,8 @@ export default function App() {
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col space-y-3 bg-dark-surface/40 p-3 rounded-xl lg:bg-transparent lg:p-0 lg:rounded-none border border-dark-border lg:border-0 mb-2 lg:mb-0 min-h-0">
               <div className="space-y-3">
-                <CustomDropdown label="01. Year" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={YEARS} value={year} onChange={setYear} getLabel={(y) => y.toString()} getKey={(y) => y} disabled={loadingMeetings} />
-                <CustomDropdown label="02. Grand Prix" icon={<MapPin className="w-3 h-3 text-f1-red" />} options={meetings} value={selectedMeeting} onChange={setSelectedMeeting} getLabel={(m) => m.meeting_name} getKey={(m) => m.round} placeholder="Select Grand Prix" disabled={loadingSessions} />
+                <CustomDropdown label="01. Year" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={YEARS} value={year} onChange={setYear} getLabel={(y) => y.toString()} getKey={(y) => y} disabled={loadingMeetings} autoPosition={true} />
+                <CustomDropdown label="02. Grand Prix" icon={<MapPin className="w-3 h-3 text-f1-red" />} options={meetings} value={selectedMeeting} onChange={setSelectedMeeting} getLabel={(m) => m.meeting_name} getKey={(m) => m.round} placeholder="Select Grand Prix" disabled={loadingSessions} autoPosition={true} />
                 <AnimatePresence>
                   {selectedMeeting && (
                     <motion.div
@@ -577,7 +598,7 @@ export default function App() {
                       animate={{ opacity: 1, height: 'auto', transitionEnd: { overflow: 'visible' } }}
                       exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
                     >
-                      <CustomDropdown label="03. Session" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={sessions} value={selectedSession} onChange={setSelectedSession} getLabel={(s) => s.session_name} getKey={(s) => s.session_identifier} placeholder="Select Session" disabled={loadingResults} />
+                      <CustomDropdown label="03. Session" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={sessions} value={selectedSession} onChange={setSelectedSession} getLabel={(s) => s.session_name} getKey={(s) => s.session_identifier} placeholder="Select Session" disabled={loadingResults} autoPosition={true} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -638,6 +659,28 @@ export default function App() {
                               getLabel={(l) => `Lap ${l.LapNumber} (${formatLapTime(l.LapTime)})`}
                               getKey={(l) => l.LapNumber}
                               maxItems={5}
+                              autoPosition={true}
+                              renderSelectedValue={(l) => {
+                                const isFastest = fastestLap && l.LapNumber === fastestLap.LapNumber;
+                                return (
+                                  <div className="flex items-center justify-between w-full">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono text-sm">Lap {l.LapNumber}</span>
+                                      <span className={cn("font-mono text-xs", isFastest ? "text-[#b138ff] font-bold" : "text-white/60")}>
+                                        {formatLapTime(l.LapTime)}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {isFastest && (
+                                        <span className="text-[8px] bg-[#b138ff]/20 text-[#b138ff] px-1 py-0.5 rounded-sm font-bold tracking-widest uppercase">
+                                          Fastest
+                                        </span>
+                                      )}
+                                      <TyreIcon compound={l.Compound} />
+                                    </div>
+                                  </div>
+                                );
+                              }}
                               renderOption={(l) => {
                                 const isFastest = fastestLap && l.LapNumber === fastestLap.LapNumber;
                                 return (
