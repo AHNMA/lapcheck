@@ -761,7 +761,6 @@ export default function App() {
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <span className="font-black text-lg tracking-tighter leading-none">{d?.Abbreviation}</span>
-                                {isDashed && <span className="text-[8px] font-mono opacity-50 border border-white/20 px-1 py-0.5 rounded-sm">DASHED</span>}
                               </div>
 
                               {lap && (
@@ -890,7 +889,6 @@ export default function App() {
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="font-black text-4xl tracking-tighter leading-none">{d?.Abbreviation}</span>
-                            {isDashed && <span className="text-sm font-mono opacity-50 border border-white/20 px-2 py-0.5 rounded-sm">DASHED</span>}
                           </div>
 
                           {lap && (
