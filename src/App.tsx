@@ -371,20 +371,30 @@ export default function App() {
   // --- AUTO-SELECTIONS & STATE RESETS ---
 
   useEffect(() => {
-    if (meetings.length > 0 && !selectedMeeting) {
-      setSelectedMeeting(meetings[meetings.length - 1]);
-    } else if (meetings.length === 0) {
+    if (meetings.length > 0) {
+      const matchingMeeting = selectedMeeting ? meetings.find(m => m.round === selectedMeeting.round && m.meeting_name === selectedMeeting.meeting_name) : undefined;
+      if (matchingMeeting) {
+        setSelectedMeeting(matchingMeeting);
+      } else {
+        setSelectedMeeting(meetings[meetings.length - 1]);
+      }
+    } else {
       setSelectedMeeting(null);
     }
-  }, [meetings, selectedMeeting]);
+  }, [meetings]);
 
   useEffect(() => {
-    if (sessions.length > 0 && !selectedSession) {
-      setSelectedSession(sessions[sessions.length - 1]);
-    } else if (sessions.length === 0) {
+    if (sessions.length > 0) {
+      const matchingSession = selectedSession ? sessions.find(s => s.session_identifier === selectedSession.session_identifier) : undefined;
+      if (matchingSession) {
+        setSelectedSession(matchingSession);
+      } else {
+        setSelectedSession(sessions[sessions.length - 1]);
+      }
+    } else {
       setSelectedSession(null);
     }
-  }, [sessions, selectedSession]);
+  }, [sessions]);
 
   useEffect(() => {
     setSelectedLaps({});
