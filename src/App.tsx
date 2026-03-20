@@ -270,6 +270,7 @@ const TelemetryChart = React.memo(function TelemetryChart({
       show: true,
       top: 0,
       right: 20,
+      itemWidth: 20,
       textStyle: { color: '#ffffff90', fontFamily: 'monospace', fontSize: 10 },
       itemStyle: { opacity: 0 } // This hides the series symbol (circle) in the legend, leaving only the line (solid/dashed)
     },
