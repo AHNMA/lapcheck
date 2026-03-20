@@ -797,14 +797,14 @@ export default function App() {
                 <div className="flex-1 min-h-[400px] lg:min-h-0 border border-dark-border p-2 lg:p-4 bg-dark-surface/30 rounded-xl lg:rounded-lg relative overflow-hidden flex flex-col overflow-y-auto no-scrollbar">
                 <div className="flex flex-wrap items-center gap-1 mb-4 relative z-10">
                   <div className="flex bg-dark-bg/50 border border-dark-border p-1 rounded-sm mr-2">
-                    <button onClick={() => setViewMode('single')} className={cn("px-3 py-1 text-[9px] font-mono font-bold uppercase tracking-widest transition-all rounded-sm", viewMode === 'single' ? "bg-f1-red text-white" : "text-white/40 hover:text-white/60")}>Single</button>
-                    <button onClick={() => setViewMode('all')} className={cn("px-3 py-1 text-[9px] font-mono font-bold uppercase tracking-widest transition-all rounded-sm", viewMode === 'all' ? "bg-f1-red text-white" : "text-white/40 hover:text-white/60")}>All</button>
+                    <button onClick={() => setViewMode('single')} className={cn("px-3 pb-1 pt-[5px] text-[9px] font-mono font-bold uppercase tracking-widest transition-all rounded-sm leading-none", viewMode === 'single' ? "bg-f1-red text-white" : "text-white/40 hover:text-white/60")}>Single</button>
+                    <button onClick={() => setViewMode('all')} className={cn("px-3 pb-1 pt-[5px] text-[9px] font-mono font-bold uppercase tracking-widest transition-all rounded-sm leading-none", viewMode === 'all' ? "bg-f1-red text-white" : "text-white/40 hover:text-white/60")}>All</button>
                   </div>
 
                   {viewMode === 'single' && (
-                    <div className="flex flex-wrap gap-1">
+                     <div className="flex flex-wrap gap-1">
                       {METRICS.map((m) => (
-                        <button key={m} onClick={() => setSelectedMetric(m)} className={cn("px-3 py-1.5 text-[9px] font-mono font-bold uppercase tracking-widest transition-all border rounded-sm", selectedMetric === m ? "bg-f1-red/20 text-f1-red border-f1-red" : "bg-dark-bg/50 text-white/40 border-dark-border hover:border-white/20 hover:text-white/60")}>{m}</button>
+                        <button key={m} onClick={() => setSelectedMetric(m)} className={cn("px-3 pb-1.5 pt-[7px] text-[9px] font-mono font-bold uppercase tracking-widest transition-all border rounded-sm leading-none", selectedMetric === m ? "bg-f1-red/20 text-f1-red border-f1-red" : "bg-dark-bg/50 text-white/40 border-dark-border hover:border-white/20 hover:text-white/60")}>{m}</button>
                       ))}
                     </div>
                   )}
