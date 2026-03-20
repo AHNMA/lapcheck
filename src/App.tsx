@@ -105,6 +105,7 @@ interface DropdownProps<T> {
   onChange: (value: T) => void;
   getLabel: (option: T) => string;
   getKey: (option: T) => string | number;
+  renderOption?: (option: T) => React.ReactNode; // NEU: Erlaubt Custom-Rendering in der Liste
   disabled?: boolean;
   placeholder?: string;
   openUpwards?: boolean;
@@ -112,7 +113,7 @@ interface DropdownProps<T> {
 }
 
 function CustomDropdown<T>({ 
-  label, icon, options, value, onChange, getLabel, getKey, disabled, placeholder = "Select...", openUpwards = false, maxItems = 7
+  label, icon, options, value, onChange, getLabel, getKey, renderOption, disabled, placeholder = "Select...", openUpwards = false, maxItems = 7
 }: DropdownProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -162,12 +163,15 @@ function CustomDropdown<T>({
                 key={`${getKey(option)}-${idx}`}
                 onClick={() => { onChange(option); setIsOpen(false); }}
                 className={cn(
-                  "w-full text-left px-3 py-2 text-sm hover:bg-f1-red hover:text-white transition-colors flex items-center justify-between",
+                  "w-full text-left px-3 py-2 text-sm hover:bg-f1-red hover:text-white transition-colors flex items-center justify-between gap-2",
                   value && getKey(value) === getKey(option) && "bg-f1-red/20 text-f1-red"
                 )}
               >
-                <span className="truncate">{getLabel(option)}</span>
-                {value && getKey(value) === getKey(option) && <Check className="w-4 h-4" />}
+                <div className="flex-1 min-w-0">
+                  {/* Nutze renderOption falls vorhanden, sonst Fallback auf reinen Text */}
+                  {renderOption ? renderOption(option) : <span className="truncate">{getLabel(option)}</span>}
+                </div>
+                {value && getKey(value) === getKey(option) && <Check className="w-4 h-4 shrink-0" />}
               </button>
             ))}
           </motion.div>
@@ -538,8 +542,9 @@ export default function App() {
 
               <AnimatePresence>
                 {selectedSession && results.length > 0 && (
-                  <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="pt-4 border-t border-dark-border">
-                    <div className="flex items-center justify-between mb-3">
+                  {/* 04. Drivers Bereich ersetzen durch: */}
+                  <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="pt-4 border-t border-dark-border flex-1 flex flex-col min-h-0">
+                    <div className="flex items-center justify-between mb-3 shrink-0">
                       <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em]">
                         <Users className="w-3 h-3 text-f1-red" />
                         <span>04. Drivers ({selectedDrivers.length}/2)</span>
@@ -547,9 +552,9 @@ export default function App() {
                       {selectedDrivers.length > 0 && <button onClick={() => { setSelectedDrivers([]); setSelectedLaps({}); }} className="text-[10px] font-mono uppercase text-f1-red hover:underline">Reset</button>}
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-2 gap-1.5 flex-1 overflow-y-auto no-scrollbar auto-rows-fr">
                       {results.map((d) => (
-                        <button key={d.DriverNumber} onClick={() => handleDriverToggle(d.DriverNumber)} className={cn("relative overflow-hidden group flex items-center justify-between px-2 py-1.5 border rounded-sm transition-all", selectedDrivers.includes(d.DriverNumber) ? "bg-f1-red/10 text-white border-f1-red" : "bg-dark-bg border-dark-border hover:border-f1-red/50")}>
+                        <button key={d.DriverNumber} onClick={() => handleDriverToggle(d.DriverNumber)} className={cn("relative overflow-hidden group flex items-center justify-between px-2 py-1.5 border rounded-sm transition-all h-full", selectedDrivers.includes(d.DriverNumber) ? "bg-f1-red/10 text-white border-f1-red" : "bg-dark-bg border-dark-border hover:border-f1-red/50")}>
                           <div className="absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5" style={{ backgroundColor: `#${d.TeamColor || '888'}` }} />
                           <div className="pl-1.5 flex items-center gap-2">
                             <span className="font-mono font-bold text-[10px] w-3 text-center text-white/40">{d.Position}</span>
@@ -562,7 +567,8 @@ export default function App() {
                 )}
 
                 {selectedDrivers.length > 0 && (
-                  <motion.section key="sidebar-lap-selection" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mt-4 pt-4 border-t border-dark-border">
+                  {/* 05. Lap Selection Bereich ersetzen durch: */}
+                  <motion.section key="sidebar-lap-selection" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mt-4 pt-4 border-t border-dark-border shrink-0">
                     <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em] mb-3">
                       <Timer className="w-3 h-3 text-f1-red" />
                       <span>05. Lap Selection</span>
@@ -576,9 +582,43 @@ export default function App() {
                         if (isLoadingLaps) return <div key={num} className="text-xs text-center opacity-50 font-mono py-2">Loading laps...</div>;
                         if (laps.length === 0) return null;
 
+                        // Schnellste Runde berechnen, um sie im Dropdown zu markieren
+                        const validLaps = laps.filter(l => l.LapTime && l.LapTime !== 'None' && l.LapTime !== 'NaT');
+                        const fastestLap = validLaps.length > 0 ? validLaps.reduce((min, lap) => parseLapTime(lap.LapTime) < parseLapTime(min.LapTime) ? lap : min) : null;
+
                         return (
                           <div key={`sidebar-lap-${num}`} className="bg-dark-bg border border-dark-border p-2 rounded-sm">
-                            <CustomDropdown label={`LAP FOR ${d?.Abbreviation}`} icon={<Timer className="w-3 h-3 text-f1-red" />} options={laps} value={selectedLaps[num] || null} onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))} getLabel={(l) => `Lap ${l.LapNumber} (${formatLapTime(l.LapTime)}) [${l.Compound}]`} getKey={(l) => l.LapNumber} maxItems={5} />
+                            <CustomDropdown
+                              label={`LAP FOR ${d?.Abbreviation}`}
+                              icon={<Timer className="w-3 h-3 text-f1-red" />}
+                              options={laps}
+                              value={selectedLaps[num] || null}
+                              onChange={(lap) => setSelectedLaps(prev => ({ ...prev, [num]: lap }))}
+                              getLabel={(l) => `Lap ${l.LapNumber} (${formatLapTime(l.LapTime)})`}
+                              getKey={(l) => l.LapNumber}
+                              maxItems={5}
+                              renderOption={(l) => {
+                                const isFastest = fastestLap && l.LapNumber === fastestLap.LapNumber;
+                                return (
+                                  <div className="flex items-center justify-between w-full">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono text-sm w-12">Lap {l.LapNumber}</span>
+                                      <span className={cn("font-mono text-xs", isFastest ? "text-[#b138ff] font-bold" : "text-white/60")}>
+                                        {formatLapTime(l.LapTime)}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {isFastest && (
+                                        <span className="text-[8px] bg-[#b138ff]/20 text-[#b138ff] px-1 py-0.5 rounded-sm font-bold tracking-widest uppercase">
+                                          Fastest
+                                        </span>
+                                      )}
+                                      <TyreIcon compound={l.Compound} />
+                                    </div>
+                                  </div>
+                                );
+                              }}
+                            />
                           </div>
                         );
                       })}
