@@ -265,7 +265,7 @@ const TelemetryChart = React.memo(function TelemetryChart({
         return value.toFixed(metric === 'gear' ? 0 : 1);
       }
     },
-    legend: { show: true, top: 0, right: 20, textStyle: { color: '#ffffff90', fontFamily: 'monospace', fontSize: 10 }, icon: 'circle' },
+    legend: { show: true, top: 0, right: 20, textStyle: { color: '#ffffff90', fontFamily: 'monospace', fontSize: 10 } },
     dataZoom: [{ type: 'inside', xAxisIndex: 0, zoomOnMouseWheel: true, moveOnMouseMove: true }],
     xAxis: {
       type: 'value', min: 'dataMin', max: 'dataMax', show: showXAxis,
