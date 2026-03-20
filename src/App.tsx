@@ -236,6 +236,7 @@ const TelemetryChart = React.memo(function TelemetryChart({
         name: d.Abbreviation,
         type: 'line',
         step: (metric === 'gear' || metric === 'brake') ? 'end' : false,
+        symbol: 'none',
         showSymbol: false,
         connectNulls: true,
         data: dataPoints,
@@ -265,7 +266,13 @@ const TelemetryChart = React.memo(function TelemetryChart({
         return value.toFixed(metric === 'gear' ? 0 : 1);
       }
     },
-    legend: { show: true, top: 0, right: 20, textStyle: { color: '#ffffff90', fontFamily: 'monospace', fontSize: 10 } },
+    legend: {
+      show: true,
+      top: 0,
+      right: 20,
+      textStyle: { color: '#ffffff90', fontFamily: 'monospace', fontSize: 10 },
+      itemStyle: { opacity: 0 } // This hides the series symbol (circle) in the legend, leaving only the line (solid/dashed)
+    },
     dataZoom: [{ type: 'inside', xAxisIndex: 0, zoomOnMouseWheel: true, moveOnMouseMove: true }],
     xAxis: {
       type: 'value', min: 'dataMin', max: 'dataMax', show: showXAxis,
