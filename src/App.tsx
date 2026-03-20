@@ -583,7 +583,7 @@ export default function App() {
         <aside className="border-t lg:border-t-0 lg:border-r border-dark-border lg:h-full carbon-pattern overflow-y-auto no-scrollbar relative flex flex-col">
           <div className="p-3 lg:p-4 h-full flex flex-col relative z-10">
             <div className="flex items-center justify-between mb-4">
-              <img src="https://storage.googleapis.com/lap-check-images/lap_logo.png?v=3" alt="Lap-Check Logo" className="h-10 w-auto" referrerPolicy="no-referrer" />
+              <img src="/assets/uploads/lap_logo.png" alt="Lap-Check Logo" className="h-10 w-auto" />
               {isAnyLoading && <Loader2 className="w-5 h-5 animate-spin text-f1-red" />}
             </div>
 
@@ -852,14 +852,7 @@ export default function App() {
             <div className="flex justify-between items-start mb-10 relative z-10">
 
               <div className="flex flex-col gap-6">
-                {/* FIX: crossOrigin Flag gesetzt, damit html-to-image nicht wegen CORS blockiert */}
-                <img
-                  src="https://storage.googleapis.com/lap-check-images/lap_logo.png?v=3"
-                  alt="Lap-Check Logo"
-                  className="h-12 w-auto object-contain object-left"
-                  referrerPolicy="no-referrer"
-                  crossOrigin="anonymous"
-                />
+                <img src="/assets/uploads/lap_logo.png" alt="Lap-Check Logo" className="h-12 w-auto object-contain object-left" />
                 <div>
                   <h2 className="text-6xl font-black uppercase italic tracking-tighter leading-none mb-3">
                     {selectedMeeting?.meeting_name}
