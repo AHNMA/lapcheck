@@ -297,7 +297,18 @@ export default function App() {
 
   const { data: sessions = [], isLoading: loadingSessions, error: errorSessions } = useQuery({
     queryKey: ['sessions', year, selectedMeeting?.meeting_name],
-    queryFn: () => f1Service.getSessions(year, selectedMeeting!.meeting_name),
+    queryFn: async () => {
+      const data = await f1Service.getSessions(year, selectedMeeting!.meeting_name);
+      const now = new Date();
+
+      // Behalte alle Sessions, die bereits abgehalten wurden (Safari-kompatibles Date-Parsing)
+      const pastSessions = data.filter(s => {
+        if (!s.session_date || s.session_date === 'None' || s.session_date === 'NaT') return false;
+        return new Date(s.session_date.replace(' ', 'T')) <= now;
+      });
+
+      return pastSessions;
+    },
     enabled: !!selectedMeeting
   });
 
