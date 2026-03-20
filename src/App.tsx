@@ -542,7 +542,6 @@ export default function App() {
 
               <AnimatePresence>
                 {selectedSession && results.length > 0 && (
-                  {/* 04. Drivers Bereich ersetzen durch: */}
                   <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="pt-4 border-t border-dark-border flex-1 flex flex-col min-h-0">
                     <div className="flex items-center justify-between mb-3 shrink-0">
                       <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em]">
@@ -567,7 +566,6 @@ export default function App() {
                 )}
 
                 {selectedDrivers.length > 0 && (
-                  {/* 05. Lap Selection Bereich ersetzen durch: */}
                   <motion.section key="sidebar-lap-selection" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mt-4 pt-4 border-t border-dark-border shrink-0">
                     <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em] mb-3">
                       <Timer className="w-3 h-3 text-f1-red" />
