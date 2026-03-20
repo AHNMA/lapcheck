@@ -382,7 +382,7 @@ export default function App() {
   const allLapsReady = selectedDrivers.length > 0 && selectedDrivers.every(num => selectedLaps[num] !== null && selectedLaps[num] !== undefined);
 
   const { data: telemetryData = [], isFetching: loadingTelemetry, error: errorTelemetry } = useQuery({
-    queryKey: ['telemetry', year, selectedMeeting?.meeting_name, selectedSession?.session_name, selectedDrivers.join(','), Object.values(selectedLaps).map(l => l?.LapNumber).join(',')],
+    queryKey: ['telemetry', year, selectedMeeting?.meeting_name, selectedSession?.session_name, selectedDrivers.join(','), Object.values(selectedLaps).map(l => (l as Lap | null)?.LapNumber).join(',')],
     queryFn: () => new Promise<any[]>((resolve, reject) => {
       const worker = new Worker(new URL('./workers/telemetryWorker.ts', import.meta.url), { type: 'module' });
       worker.onmessage = (e) => {
@@ -525,7 +525,7 @@ export default function App() {
         backgroundColor: '#0a0a0a',
         width: 1600,
         height: 900,
-        fetchRequest: { cache: 'no-cache' } // Hilft bei Cache-Problemen mit html-to-image
+        fetchRequestInit: { cache: 'no-cache' } // Hilft bei Cache-Problemen mit html-to-image
       });
 
       const driverNames = selectedDrivers.map(num => results.find(d => d.DriverNumber === num)?.Abbreviation).filter(Boolean).join('-');
