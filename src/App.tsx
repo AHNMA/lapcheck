@@ -663,10 +663,10 @@ export default function App() {
                               renderSelectedValue={(l) => {
                                 const isFastest = fastestLap && l.LapNumber === fastestLap.LapNumber;
                                 return (
-                                  <div className="flex items-center justify-between w-full">
+                                  <div className="flex items-center justify-between w-full h-full">
                                     <div className="flex items-center gap-2">
-                                      <span className="font-mono text-sm">Lap {l.LapNumber}</span>
-                                      <span className={cn("font-mono text-xs", isFastest ? "text-[#b138ff] font-bold" : "text-white/60")}>
+                                      <span className="font-mono text-sm leading-none mt-[2px]">Lap {l.LapNumber}</span>
+                                      <span className={cn("font-mono text-xs leading-none mt-[2px]", isFastest ? "text-[#b138ff] font-bold" : "text-white/60")}>
                                         {formatLapTime(l.LapTime)}
                                       </span>
                                     </div>
@@ -684,10 +684,10 @@ export default function App() {
                               renderOption={(l) => {
                                 const isFastest = fastestLap && l.LapNumber === fastestLap.LapNumber;
                                 return (
-                                  <div className="flex items-center justify-between w-full">
+                                  <div className="flex items-center justify-between w-full h-full">
                                     <div className="flex items-center gap-2">
-                                      <span className="font-mono text-sm w-12">Lap {l.LapNumber}</span>
-                                      <span className={cn("font-mono text-xs", isFastest ? "text-[#b138ff] font-bold" : "text-white/60")}>
+                                      <span className="font-mono text-sm w-12 leading-none mt-[2px]">Lap {l.LapNumber}</span>
+                                      <span className={cn("font-mono text-xs leading-none mt-[2px]", isFastest ? "text-[#b138ff] font-bold" : "text-white/60")}>
                                         {formatLapTime(l.LapTime)}
                                       </span>
                                     </div>
