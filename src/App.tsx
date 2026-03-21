@@ -600,8 +600,8 @@ export default function App() {
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col space-y-3 bg-dark-surface/40 p-3 rounded-xl lg:bg-transparent lg:p-0 lg:rounded-none border border-dark-border lg:border-0 mb-2 lg:mb-0 min-h-0">
               <div className="space-y-3">
-                <CustomDropdown label="01. Year" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={YEARS} value={year} onChange={setYear} getLabel={(y) => y.toString()} getKey={(y) => y} disabled={loadingMeetings} autoPosition={true} />
-                <CustomDropdown label="02. Grand Prix" icon={<MapPin className="w-3 h-3 text-f1-red" />} options={meetings} value={selectedMeeting} onChange={setSelectedMeeting} getLabel={(m) => m.meeting_name} getKey={(m) => m.round} placeholder="Select Grand Prix" disabled={loadingSessions} autoPosition={true} />
+                <CustomDropdown label="Year" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={YEARS} value={year} onChange={setYear} getLabel={(y) => y.toString()} getKey={(y) => y} disabled={loadingMeetings} autoPosition={true} />
+                <CustomDropdown label="Grand Prix" icon={<MapPin className="w-3 h-3 text-f1-red" />} options={meetings} value={selectedMeeting} onChange={setSelectedMeeting} getLabel={(m) => m.meeting_name} getKey={(m) => m.round} placeholder="Select Grand Prix" disabled={loadingSessions} autoPosition={true} />
                 <AnimatePresence>
                   {selectedMeeting && (
                     <motion.div
@@ -609,7 +609,7 @@ export default function App() {
                       animate={{ opacity: 1, height: 'auto', transitionEnd: { overflow: 'visible' } }}
                       exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
                     >
-                      <CustomDropdown label="03. Session" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={sessions} value={selectedSession} onChange={setSelectedSession} getLabel={(s) => s.session_name} getKey={(s) => s.session_identifier} placeholder="Select Session" disabled={loadingResults} autoPosition={true} />
+                      <CustomDropdown label="Session" icon={<Calendar className="w-3 h-3 text-f1-red" />} options={sessions} value={selectedSession} onChange={setSelectedSession} getLabel={(s) => s.session_name} getKey={(s) => s.session_identifier} placeholder="Select Session" disabled={loadingResults} autoPosition={true} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -621,7 +621,7 @@ export default function App() {
                     <div className="flex items-center justify-between mb-3 shrink-0">
                       <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em]">
                         <Users className="w-3 h-3 text-f1-red" />
-                        <span>04. Drivers ({selectedDrivers.length}/2)</span>
+                        <span>Drivers ({selectedDrivers.length}/2)</span>
                       </div>
                     </div>
                     
@@ -640,10 +640,6 @@ export default function App() {
                 )}
 
                 <motion.section key="sidebar-lap-selection" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={cn("mt-4 pt-4 border-t border-dark-border shrink-0 transition-opacity", selectedDrivers.length === 0 && "opacity-50 pointer-events-none")}>
-                  <div className="flex items-center gap-2 opacity-40 uppercase text-[10px] font-mono font-bold tracking-[0.2em] mb-3">
-                    <Timer className="w-3 h-3 text-f1-red" />
-                    <span>05. Lap Selection</span>
-                  </div>
                   <div className="space-y-2">
                     {/* Render active lap dropdowns */}
                     {selectedDrivers.map((num, idx) => {
