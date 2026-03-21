@@ -5,7 +5,7 @@
 
 const BASE_URL = 'https://api.letthemrace.net';
 export const DEFAULT_LIMIT = 500;
-const TIMEOUT_MS = 150000; // 150 seconds
+const TIMEOUT_MS = 30000; // 30 seconds
 
 async function fetchData(url: string): Promise<Response> {
   const controller = new AbortController();
@@ -112,7 +112,7 @@ export const f1Service = {
       const res = await fetchData(`${BASE_URL}/meetings/${year}`);
       if (res.status === 404) return [];
       if (res.status === 429) {
-        throw new Error('Live-Datenlimit erreicht. Bitte versuche es in einer Stunde erneut oder wähle ein Rennen aus dem Archiv (2023-2025).');
+        throw new Error('Live-Datenlimit erreicht. Bitte Archiv (2023-2025) nutzen.');
       }
       if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
       const data = await res.json();
@@ -128,7 +128,7 @@ export const f1Service = {
       const res = await fetchData(`${BASE_URL}/sessions/${year}/${encodeURIComponent(race)}`);
       if (res.status === 404) return [];
       if (res.status === 429) {
-        throw new Error('Live-Datenlimit erreicht. Bitte versuche es in einer Stunde erneut oder wähle ein Rennen aus dem Archiv (2023-2025).');
+        throw new Error('Live-Datenlimit erreicht. Bitte Archiv (2023-2025) nutzen.');
       }
       if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
       const data = await res.json();
@@ -144,7 +144,7 @@ export const f1Service = {
       const res = await fetchData(`${BASE_URL}/results/${year}/${encodeURIComponent(race)}/${encodeURIComponent(session)}`);
       if (res.status === 404) return [];
       if (res.status === 429) {
-        throw new Error('Live-Datenlimit erreicht. Bitte versuche es in einer Stunde erneut oder wähle ein Rennen aus dem Archiv (2023-2025).');
+        throw new Error('Live-Datenlimit erreicht. Bitte Archiv (2023-2025) nutzen.');
       }
       if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
       const data = await res.json();
@@ -161,7 +161,7 @@ export const f1Service = {
       const res = await fetchData(url);
       if (res.status === 404) return [];
       if (res.status === 429) {
-        throw new Error('Live-Datenlimit erreicht. Bitte versuche es in einer Stunde erneut oder wähle ein Rennen aus dem Archiv (2023-2025).');
+        throw new Error('Live-Datenlimit erreicht. Bitte Archiv (2023-2025) nutzen.');
       }
       if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
       const data = await res.json();
@@ -182,7 +182,7 @@ export const f1Service = {
       const res = await fetchData(url);
       if (res.status === 404) return [];
       if (res.status === 429) {
-        throw new Error('Live-Datenlimit erreicht. Bitte versuche es in einer Stunde erneut oder wähle ein Rennen aus dem Archiv (2023-2025).');
+        throw new Error('Live-Datenlimit erreicht. Bitte Archiv (2023-2025) nutzen.');
       }
       if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
       const data: TelemetryResponse = await res.json();
@@ -200,7 +200,7 @@ export const f1Service = {
       }));
     } catch (err) {
       console.error('Telemetry fetch error:', err);
-      return [];
+      throw err;
     }
   },
 };
