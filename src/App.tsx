@@ -492,6 +492,9 @@ export default function App() {
   const handleDriverToggle = (driverNumber: string) => {
     setSelectedDrivers(prev => {
       if (prev.includes(driverNumber)) {
+        // Prevent deselecting the last selected driver
+        if (prev.length === 1) return prev;
+
         setSelectedLaps(l => { const c = {...l}; delete c[driverNumber]; return c; });
         return prev.filter(id => id !== driverNumber);
       }
@@ -620,7 +623,6 @@ export default function App() {
                         <Users className="w-3 h-3 text-f1-red" />
                         <span>04. Drivers ({selectedDrivers.length}/2)</span>
                       </div>
-                      {selectedDrivers.length > 0 && <button onClick={() => { setSelectedDrivers([]); setSelectedLaps({}); }} className="text-[10px] font-mono uppercase text-f1-red hover:underline">Reset</button>}
                     </div>
                     
                     <div className="grid grid-cols-2 gap-1.5 flex-1 overflow-y-auto no-scrollbar auto-rows-fr">
