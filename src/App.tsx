@@ -651,21 +651,7 @@ export default function App() {
                       const laps = availableLaps[num] || [];
                       const isLoadingLaps = lapQueries[idx]?.isLoading;
 
-                      if (isLoadingLaps) return (
-                        <div key={num} className="bg-dark-bg/50 border border-dark-border/50 p-2 rounded-sm opacity-50 pointer-events-none">
-                          <CustomDropdown
-                            label={`LAP FOR ${d?.Abbreviation}`}
-                            icon={<Timer className="w-3 h-3 text-f1-red/50" />}
-                            options={[]}
-                            value={null}
-                            onChange={() => {}}
-                            getLabel={() => ""}
-                            getKey={() => ""}
-                            placeholder="Loading Laps..."
-                            disabled={true}
-                          />
-                        </div>
-                      );
+                      if (isLoadingLaps) return <div key={num} className="text-xs text-center opacity-50 font-mono py-2 bg-dark-bg border border-dark-border rounded-sm">Loading laps...</div>;
                       if (laps.length === 0) return null;
 
                       // Schnellste Runde berechnen, um sie im Dropdown zu markieren
