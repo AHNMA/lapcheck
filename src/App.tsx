@@ -306,8 +306,8 @@ const TelemetryChart = React.memo(function TelemetryChart({
   };
 
   return (
-    <div style={{ height: typeof height === 'number' ? `${height}px` : height, width: '100%' }}>
-      <ReactECharts option={option} style={{ height: '100%', width: '100%' }} group="telemetryGroup" opts={{ renderer: 'canvas' }} notMerge={true} />
+    <div className="flex-1 w-full min-h-0 flex flex-col" style={{ height: typeof height === 'number' ? `${height}px` : height, width: '100%' }}>
+      <ReactECharts option={option} style={{ height: '100%', width: '100%', flex: 1 }} className="flex-1" group="telemetryGroup" opts={{ renderer: 'canvas' }} notMerge={true} />
     </div>
   );
 }, (prevProps, nextProps) => {
