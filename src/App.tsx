@@ -775,7 +775,7 @@ export default function App() {
                 <p className="text-2xl font-black uppercase italic tracking-tighter">Awaiting Telemetry Input</p>
               </motion.div>
             ) : telemetryData.length > 0 ? (
-              <motion.div key="telemetry-dashboard" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="flex-1 flex flex-col min-h-[50vh] lg:min-h-0">
+              <motion.div key="telemetry-dashboard" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="flex-1 flex flex-col min-h-[60vh] lg:min-h-0">
               <div className="mb-4 flex flex-col items-center text-center lg:flex-row lg:items-end lg:text-left justify-between gap-4">
                 <div className="flex flex-col items-center lg:items-start">
                   <h2 className="text-3xl lg:text-4xl font-black uppercase tracking-tighter leading-tight lg:leading-none">{selectedMeeting?.meeting_name}</h2>
@@ -863,13 +863,13 @@ export default function App() {
                   {!isAnyLoading && telemetryData.length > 0 && (
                     <motion.div key={`${viewMode}-${selectedMetric}-${JSON.stringify(selectedLaps)}-${JSON.stringify(selectedDrivers)}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-[40vh] lg:min-h-0">
                       {viewMode === 'single' ? (
-                        <div className="flex-1 flex flex-col min-h-[300px] lg:min-h-0">
+                        <div className="flex-1 flex flex-col min-h-0">
                           <TelemetryChart data={telemetryData} metric={selectedMetric} results={results} selectedDrivers={selectedDrivers} height="100%" showXAxis={true} />
                         </div>
                       ) : (
-                        <div className="flex-1 flex flex-col min-h-[800px] lg:min-h-0">
+                        <div className="flex-1 flex flex-col min-h-0">
                           {METRICS.map((m, idx) => (
-                            <div key={m} className="flex-1 min-h-[200px] lg:min-h-0 border-b border-white/5 last:border-0 pt-2">
+                            <div key={m} className="flex-1 min-h-[250px] shrink-0 lg:min-h-0 lg:shrink border-b border-white/5 last:border-0 pt-2">
                               <TelemetryChart data={telemetryData} metric={m} results={results} selectedDrivers={selectedDrivers} height="100%" showXAxis={idx === METRICS.length - 1} />
                             </div>
                           ))}
