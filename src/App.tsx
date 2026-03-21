@@ -597,7 +597,8 @@ export default function App() {
       </header>
 
       <main className="flex flex-col-reverse lg:grid lg:grid-cols-[380px_1fr] flex-1 lg:overflow-hidden">
-        <aside className="border-t lg:border-t-0 lg:border-r border-dark-border lg:h-full carbon-pattern overflow-y-auto no-scrollbar relative flex flex-col">
+        {/* We add a high z-index to the sidebar in mobile view (lg:z-auto) so the custom dropdowns floating upwards don't get hidden behind the main section */}
+        <aside className="border-t lg:border-t-0 lg:border-r border-dark-border lg:h-full carbon-pattern overflow-y-visible lg:overflow-y-auto no-scrollbar relative z-50 lg:z-auto flex flex-col">
           <div className="p-3 lg:p-4 h-full flex flex-col relative z-10">
             <div className="hidden lg:flex items-center justify-between mb-4">
               <img src="/assets/uploads/lap_logo.png" alt="Lap-Check Logo" className="h-10 w-auto" />
@@ -773,7 +774,7 @@ export default function App() {
           </div>
         </aside>
 
-        <section className="flex-1 p-4 lg:p-6 flex flex-col bg-dark-bg lg:overflow-hidden">
+        <section className="flex-1 p-4 lg:p-6 flex flex-col bg-dark-bg lg:overflow-hidden relative z-10">
           <AnimatePresence mode="wait">
             {!selectedSession ? (
               <motion.div key="awaiting-input" initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} exit={{ opacity: 0 }} className="flex-1 min-h-[60vh] lg:min-h-0 flex flex-col items-center justify-center text-center bg-dark-surface/20 p-8 rounded-xl border border-dark-border lg:bg-transparent lg:border-0">
