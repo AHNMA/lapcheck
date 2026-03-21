@@ -782,10 +782,7 @@ export default function App() {
               <motion.div key="telemetry-dashboard" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="flex-1 flex flex-col min-h-0">
               <div className="mb-4 flex flex-col items-center text-center lg:flex-row lg:items-end lg:text-left justify-between gap-4">
                 <div className="flex flex-col items-center lg:items-start">
-                  <div className="flex items-center gap-2 text-f1-red text-[10px] font-mono font-bold uppercase tracking-[0.2em] mb-1">
-                    <span className="w-2 h-2 bg-f1-red rounded-full animate-pulse" /> Live Analysis
-                  </div>
-                  <h2 className="text-2xl lg:text-3xl font-black uppercase italic tracking-tighter leading-tight lg:leading-none">{selectedMeeting?.meeting_name}</h2>
+                  <h2 className="text-3xl lg:text-4xl font-black uppercase italic tracking-tighter leading-tight lg:leading-none">{selectedMeeting?.meeting_name}</h2>
                   <p className="text-sm font-mono opacity-50 uppercase mt-2">{selectedSession?.session_name}</p>
                 </div>
                 
