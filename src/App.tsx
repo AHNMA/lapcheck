@@ -778,7 +778,7 @@ export default function App() {
               <motion.div key="telemetry-dashboard" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="flex-1 flex flex-col min-h-0">
               <div className="mb-4 flex flex-col items-center text-center lg:flex-row lg:items-end lg:text-left justify-between gap-4">
                 <div className="flex flex-col items-center lg:items-start">
-                  <h2 className="text-3xl lg:text-4xl font-black uppercase italic tracking-tighter leading-tight lg:leading-none">{selectedMeeting?.meeting_name}</h2>
+                  <h2 className="text-3xl lg:text-4xl font-black uppercase tracking-tighter leading-tight lg:leading-none">{selectedMeeting?.meeting_name}</h2>
                   <p className="text-sm font-mono opacity-50 uppercase mt-2">{selectedSession?.session_name}</p>
                 </div>
                 
@@ -903,7 +903,7 @@ export default function App() {
               <div className="flex flex-col gap-6">
                 <img src="/assets/uploads/lap_logo.png" alt="Lap-Check Logo" className="h-12 w-auto object-contain object-left" />
                 <div>
-                  <h2 className="text-6xl font-black uppercase italic tracking-tighter leading-none mb-3">
+                  <h2 className="text-6xl font-black uppercase tracking-tighter leading-none mb-3">
                     {selectedMeeting?.meeting_name}
                   </h2>
                   <p className="text-2xl font-mono opacity-50 uppercase tracking-widest">
