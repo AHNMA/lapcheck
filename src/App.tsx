@@ -652,7 +652,7 @@ export default function App() {
                       const isLoadingLaps = lapQueries[idx]?.isLoading;
 
                       if (isLoadingLaps) return (
-                        <div key={`sidebar-lap-${num}-loading`} className="bg-dark-bg/50 border border-dark-border/50 p-2 rounded-sm opacity-50 pointer-events-none">
+                        <div key={`sidebar-lap-${num}-loading`} className="opacity-50 pointer-events-none">
                           <CustomDropdown
                             label={`LAP FOR ${d?.Abbreviation || 'DRIVER'}`}
                             icon={<Timer className="w-3 h-3 text-f1-red/50" />}
@@ -673,7 +673,7 @@ export default function App() {
                       const fastestLap = validLaps.length > 0 ? validLaps.reduce((min, lap) => parseLapTime(lap.LapTime) < parseLapTime(min.LapTime) ? lap : min) : null;
 
                       return (
-                        <div key={`sidebar-lap-${num}`} className="bg-dark-bg border border-dark-border p-2 rounded-sm">
+                        <div key={`sidebar-lap-${num}`}>
                           <CustomDropdown
                             label={`LAP FOR ${d?.Abbreviation}`}
                             icon={<Timer className="w-3 h-3 text-f1-red" />}
@@ -735,7 +735,7 @@ export default function App() {
                     {selectedDrivers.length < 2 && (
                       <>
                         {selectedDrivers.length === 0 && (
-                          <div className="bg-dark-bg/50 border border-dark-border/50 p-2 rounded-sm opacity-50 pointer-events-none">
+                          <div className="opacity-50 pointer-events-none">
                             <CustomDropdown
                               label="LAP FOR DRIVER 1"
                               icon={<Timer className="w-3 h-3 text-f1-red/50" />}
@@ -749,7 +749,7 @@ export default function App() {
                             />
                           </div>
                         )}
-                        <div className="bg-dark-bg/50 border border-dark-border/50 p-2 rounded-sm opacity-50 pointer-events-none">
+                        <div className="opacity-50 pointer-events-none">
                           <CustomDropdown
                             label="LAP FOR DRIVER 2"
                             icon={<Timer className="w-3 h-3 text-f1-red/50" />}
