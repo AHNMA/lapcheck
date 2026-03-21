@@ -45,6 +45,106 @@ const METRIC_LABELS: Record<string, string> = {
   gear: 'Gear'
 };
 
+const LegalNoticeContent = () => (
+  <div className="space-y-4 text-sm text-white/80 max-h-[70vh] overflow-y-auto pr-2 no-scrollbar">
+    <h3 className="text-xl font-bold text-white mb-2 uppercase tracking-wide">Legal Notice</h3>
+    <p className="font-bold">Information pursuant to § 5 DDG</p>
+    <p>
+      Sascha Daniel Riefe<br />
+      Heckscherstr. 39<br />
+      20253 Hamburg<br />
+      Germany
+    </p>
+
+    <p className="font-bold mt-4">Contact</p>
+    <p>Email: <a href="mailto:sascha.riefe@letthemrace.net" className="text-f1-red hover:underline">sascha.riefe@letthemrace.net</a></p>
+
+    <p className="font-bold mt-4">Liability for Links</p>
+    <p>
+      Our website contains links to external websites of third parties, the contents of which we have no influence on. Therefore, we cannot assume any liability for these external contents. The respective provider or operator of the pages is always responsible for the contents of the linked pages. The linked pages were checked for possible legal violations at the time of linking. Illegal contents were not recognizable at the time of linking. However, a permanent control of the contents of the linked pages is not reasonable without concrete evidence of a violation of the law. If we become aware of any legal infringements, we will remove such links immediately.
+    </p>
+
+    <p className="font-bold mt-4">Copyright and Trademark Disclaimer</p>
+    <p>
+      This website is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V.
+    </p>
+  </div>
+);
+
+const PrivacyPolicyContent = () => (
+  <div className="space-y-4 text-sm text-white/80 max-h-[70vh] overflow-y-auto pr-2 no-scrollbar">
+    <h3 className="text-xl font-bold text-white mb-2 uppercase tracking-wide">Privacy Policy</h3>
+
+    <p className="font-bold text-white">1. General Information</p>
+    <p>
+      The following information provides a simple overview of what happens to your personal data when you visit this website. Personal data is any data with which you could be personally identified.
+    </p>
+    <p className="font-bold mt-2">Data collection on this website</p>
+    <p>
+      Data processing on this website is carried out by the website operator. The use of this website is generally possible without providing personal data (such as name or email address). There are no user accounts, logins, or forms through which you could enter data. The website serves purely as a tool for querying data.
+    </p>
+    <p className="font-bold mt-2">Cookies and Tracking</p>
+    <p>
+      This website does not use cookies, local storage tracking, or analytics tools (such as Google Analytics). We do not track or remember any information about our users.
+    </p>
+
+    <p className="font-bold text-white mt-4">2. Data Controller</p>
+    <p>The data controller responsible for processing data on this website is:</p>
+    <p>
+      Sascha Daniel Riefe<br />
+      Heckscherstr. 39<br />
+      20253 Hamburg<br />
+      Germany
+    </p>
+    <p>Email: <a href="mailto:sascha.riefe@letthemrace.net" className="text-f1-red hover:underline">sascha.riefe@letthemrace.net</a></p>
+    <p>
+      The controller is the natural or legal person who alone or jointly with others determines the purposes and means of the processing of personal data.
+    </p>
+
+    <p className="font-bold text-white mt-4">3. Data Collection on this Website (Server Log Files)</p>
+    <p>
+      The provider of the pages (hosting provider) automatically collects and stores information in so-called server log files, which your browser automatically transmits to us. These are usually:
+    </p>
+    <ul className="list-disc pl-5 space-y-1">
+      <li>Browser type and browser version</li>
+      <li>Operating system used</li>
+      <li>Referrer URL</li>
+      <li>Hostname of the accessing computer</li>
+      <li>Time of the server request</li>
+      <li>IP address</li>
+    </ul>
+    <p>
+      This data is not merged with other data sources. We do not evaluate this data in a way that relates to individuals.
+    </p>
+    <p>
+      The basis for data processing is Art. 6 (1) (f) GDPR. The website operator has a legitimate interest in the technically error-free presentation and the optimization of their website – for this purpose, the server log files must be recorded.
+    </p>
+
+    <p className="font-bold text-white mt-4">4. Provision of Telemetry Data (API)</p>
+    <p>
+      The telemetry data displayed on this website is provided via our own Application Programming Interface (API), which is hosted on our own server. When querying this data, no personal data (including IP addresses) flows to external third-party providers.
+    </p>
+
+    <p className="font-bold text-white mt-4">5. Your Rights</p>
+    <p>
+      Within the framework of the applicable legal provisions, you have the right at any time to free information about your stored personal data, its origin and recipients, and the purpose of the data processing and, if applicable, a right to rectification, restriction of processing, or deletion of this data. For this purpose, as well as for further questions regarding the subject of personal data, you can contact the controller at any time at the address given above.
+    </p>
+  </div>
+);
+
+const Footer = ({ onOpenModal }: { onOpenModal: (modal: 'legal' | 'privacy') => void }) => (
+  <div className="w-full text-[9px] sm:text-[10px] text-white/40 font-mono tracking-wide text-center pt-4 pb-2 mt-auto">
+    <p>
+      Made by Sascha Riefe - Data by: FastF1 - Professional Telemetry Analysis Suite |{' '}
+      <button onClick={() => onOpenModal('legal')} className="text-f1-red hover:underline hover:text-f1-red/80 transition-colors">Legal Notice</button> |{' '}
+      <button onClick={() => onOpenModal('privacy')} className="text-f1-red hover:underline hover:text-f1-red/80 transition-colors">Privacy Policy</button>
+    </p>
+    <p className="mt-1 leading-tight text-[8px] sm:text-[9px] opacity-70">
+      This website is unofficial and is not associated in any way with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, FIA FORMULA ONE WORLD CHAMPIONSHIP, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V.
+    </p>
+  </div>
+);
+
 const parseLapTime = (timeStr: string | null | undefined): number => {
   if (!timeStr || timeStr === 'None' || timeStr === 'NaT') return Infinity;
   const match = timeStr.match(/(?:(\d+) days? )?(\d+):(\d+):([\d.]+)/);
@@ -329,6 +429,8 @@ export default function App() {
   const [manualError, setManualError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
+
+  const [modalContent, setModalContent] = useState<'legal' | 'privacy' | null>(null);
 
   // --- REACT QUERY DATA FETCHING ---
 
@@ -776,9 +878,13 @@ export default function App() {
         <section className="flex-1 p-4 lg:p-6 flex flex-col bg-dark-bg lg:overflow-hidden relative z-10">
           <AnimatePresence mode="wait">
             {!selectedSession ? (
-              <motion.div key="awaiting-input" initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} exit={{ opacity: 0 }} className="h-[500px] lg:flex-1 lg:h-auto lg:min-h-0 flex flex-col items-center justify-center text-center bg-dark-surface/20 p-8 rounded-xl border border-dark-border lg:bg-transparent lg:border-0">
+              <motion.div key="awaiting-input" initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} exit={{ opacity: 0 }} className="h-[500px] lg:flex-1 lg:h-auto lg:min-h-0 flex flex-col items-center justify-center text-center bg-dark-surface/20 p-8 rounded-xl border border-dark-border lg:bg-transparent lg:border-0 relative">
                 <Gauge className="w-24 h-24 mb-6" />
                 <p className="text-2xl font-black uppercase italic tracking-tighter">Awaiting Telemetry Input</p>
+                {/* Desktop Footer awaiting state (hidden on mobile) */}
+                <div className="hidden lg:block absolute bottom-0 left-0 w-full p-4">
+                  <Footer onOpenModal={setModalContent} />
+                </div>
               </motion.div>
             ) : telemetryData.length > 0 ? (
               <motion.div key="telemetry-dashboard" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="flex-1 lg:flex-1 lg:h-auto lg:min-h-0 flex flex-col">
@@ -885,20 +991,63 @@ export default function App() {
                   )}
                 </AnimatePresence>
               </div>
+              {/* Desktop Footer (hidden on mobile) */}
+              <div className="hidden lg:block mt-4">
+                <Footer onOpenModal={setModalContent} />
+              </div>
             </motion.div>
             ) : (
-              <motion.div key="loading-telemetry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-[500px] lg:flex-1 lg:h-auto lg:min-h-0 flex items-center justify-center">
+              <motion.div key="loading-telemetry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-[500px] lg:flex-1 lg:h-auto lg:min-h-0 flex items-center justify-center relative">
                 <div className="text-center space-y-4">
                   <div className="inline-block p-4 border border-dark-border rounded-full animate-pulse"><Timer className="w-8 h-8 text-f1-red" /></div>
                   <p className="text-xs font-mono uppercase tracking-[0.3em] opacity-50 max-w-md mx-auto text-center">
                     {isLoadingDelayed ? "Live-Download läuft (kann bis zu 2 Minuten dauern)..." : "Loading Telemetry Data..."}
                   </p>
                 </div>
+                {/* Desktop Footer loading state (hidden on mobile) */}
+                <div className="hidden lg:block absolute bottom-0 left-0 w-full p-4">
+                  <Footer onOpenModal={setModalContent} />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
         </section>
       </main>
+
+      {/* Mobile Footer (hidden on desktop) */}
+      <div className="lg:hidden p-4 border-t border-dark-border bg-dark-bg mt-auto shrink-0 relative z-10">
+        <Footer onOpenModal={setModalContent} />
+      </div>
+
+      {/* Modal Overlay */}
+      <AnimatePresence>
+        {modalContent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center p-4"
+            onClick={() => setModalContent(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-dark-surface border border-dark-border rounded-lg max-w-2xl w-full p-6 relative shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setModalContent(null)}
+                className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-6 h-6" />
+              </button>
+
+              {modalContent === 'legal' ? <LegalNoticeContent /> : <PrivacyPolicyContent />}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Hidden Export Container */}
       {isExporting && (
