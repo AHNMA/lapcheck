@@ -777,7 +777,7 @@ export default function App() {
         <section className="flex-1 p-4 lg:p-6 flex flex-col bg-dark-bg lg:overflow-hidden relative z-10">
           <AnimatePresence mode="wait">
             {!selectedSession ? (
-              <motion.div key="awaiting-input" initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} exit={{ opacity: 0 }} className="h-[400px] lg:flex-1 lg:h-auto lg:min-h-0 flex flex-col items-center justify-center text-center bg-dark-surface/20 p-8 rounded-xl border border-dark-border lg:bg-transparent lg:border-0">
+              <motion.div key="awaiting-input" initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} exit={{ opacity: 0 }} className="h-[350px] lg:flex-1 lg:h-auto lg:min-h-0 flex flex-col items-center justify-center text-center bg-dark-surface/20 p-8 rounded-xl border border-dark-border lg:bg-transparent lg:border-0">
                 <Gauge className="w-24 h-24 mb-6" />
                 <p className="text-2xl font-black uppercase italic tracking-tighter">Awaiting Telemetry Input</p>
               </motion.div>
@@ -850,7 +850,7 @@ export default function App() {
                 </div>
               </div>
 
-                <div className="h-[400px] shrink-0 lg:h-auto lg:flex-1 lg:min-h-0 border border-dark-border p-2 lg:p-4 bg-dark-surface/30 rounded-xl lg:rounded-lg relative overflow-hidden flex flex-col no-scrollbar">
+                <div className="h-[350px] shrink-0 lg:h-auto lg:flex-1 lg:min-h-0 border border-dark-border p-2 lg:p-4 bg-dark-surface/30 rounded-xl lg:rounded-lg relative overflow-hidden flex flex-col no-scrollbar">
                 <div className="flex flex-nowrap items-center gap-1 mb-4 relative z-10 overflow-hidden w-full">
                   <div className="flex shrink-0 bg-dark-bg/50 border border-dark-border p-0.5 sm:p-1 rounded-sm mr-1 sm:mr-2">
                     <button onClick={() => setViewMode('single')} className={cn("px-1.5 sm:px-3 pb-1 pt-[5px] text-[7px] sm:text-[9px] font-mono font-bold uppercase tracking-widest transition-all rounded-sm leading-none shrink min-w-0 truncate", viewMode === 'single' ? "bg-f1-red text-white" : "text-white/40 hover:text-white/60")}>Single</button>
@@ -888,7 +888,7 @@ export default function App() {
               </div>
             </motion.div>
             ) : (
-              <motion.div key="loading-telemetry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-[400px] lg:flex-1 lg:h-auto lg:min-h-0 flex items-center justify-center">
+              <motion.div key="loading-telemetry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-[350px] lg:flex-1 lg:h-auto lg:min-h-0 flex items-center justify-center">
                 <div className="text-center space-y-4">
                   <div className="inline-block p-4 border border-dark-border rounded-full animate-pulse"><Timer className="w-8 h-8 text-f1-red" /></div>
                   <p className="text-xs font-mono uppercase tracking-[0.3em] opacity-50 max-w-md mx-auto text-center">
