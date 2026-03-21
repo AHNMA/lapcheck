@@ -39,5 +39,5 @@ jobs:
           set ftp:ssl-allow yes;
           set ssl:verify-certificate no;
           open -u kjkqpy_1,'${FTP_PASSWORD}' www584.your-server.de;
-          mirror --reverse --delete --verbose ./dist/ ./;
+          mirror --reverse --delete --verbose --exclude-glob assets/uploads/ ./dist/ ./;
           "
