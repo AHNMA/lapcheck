@@ -3,7 +3,7 @@
  * Self-hosted instance
  */
 
-const BASE_URL = 'http://178.104.33.41:8000';
+const BASE_URL = 'https://api.letthemrace.net';
 export const DEFAULT_LIMIT = 500;
 const TIMEOUT_MS = 150000; // 150 seconds
 
