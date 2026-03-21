@@ -770,12 +770,12 @@ export default function App() {
         <section className="flex-1 p-4 lg:p-6 flex flex-col bg-dark-bg lg:overflow-hidden">
           <AnimatePresence mode="wait">
             {!selectedSession ? (
-              <motion.div key="awaiting-input" initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} exit={{ opacity: 0 }} className="flex-1 min-h-[300px] lg:min-h-0 flex flex-col items-center justify-center text-center bg-dark-surface/20 p-8 rounded-xl border border-dark-border lg:bg-transparent lg:border-0">
+              <motion.div key="awaiting-input" initial={{ opacity: 0 }} animate={{ opacity: 0.2 }} exit={{ opacity: 0 }} className="flex-1 min-h-[60vh] lg:min-h-0 flex flex-col items-center justify-center text-center bg-dark-surface/20 p-8 rounded-xl border border-dark-border lg:bg-transparent lg:border-0">
                 <Gauge className="w-24 h-24 mb-6" />
                 <p className="text-2xl font-black uppercase italic tracking-tighter">Awaiting Telemetry Input</p>
               </motion.div>
             ) : telemetryData.length > 0 ? (
-              <motion.div key="telemetry-dashboard" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="flex-1 flex flex-col min-h-0">
+              <motion.div key="telemetry-dashboard" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="flex-1 flex flex-col min-h-[50vh] lg:min-h-0">
               <div className="mb-4 flex flex-col items-center text-center lg:flex-row lg:items-end lg:text-left justify-between gap-4">
                 <div className="flex flex-col items-center lg:items-start">
                   <h2 className="text-3xl lg:text-4xl font-black uppercase tracking-tighter leading-tight lg:leading-none">{selectedMeeting?.meeting_name}</h2>
@@ -843,7 +843,7 @@ export default function App() {
                 </div>
               </div>
 
-                <div className="flex-1 min-h-[400px] lg:min-h-0 border border-dark-border p-2 lg:p-4 bg-dark-surface/30 rounded-xl lg:rounded-lg relative overflow-hidden flex flex-col overflow-y-auto no-scrollbar">
+                <div className="flex-1 min-h-[60vh] lg:min-h-0 border border-dark-border p-2 lg:p-4 bg-dark-surface/30 rounded-xl lg:rounded-lg relative overflow-hidden flex flex-col no-scrollbar">
                 <div className="flex flex-wrap items-center gap-1 mb-4 relative z-10">
                   <div className="flex bg-dark-bg/50 border border-dark-border p-1 rounded-sm mr-2">
                     <button onClick={() => setViewMode('single')} className={cn("px-3 pb-1 pt-[5px] text-[9px] font-mono font-bold uppercase tracking-widest transition-all rounded-sm leading-none", viewMode === 'single' ? "bg-f1-red text-white" : "text-white/40 hover:text-white/60")}>Single</button>
@@ -861,13 +861,15 @@ export default function App() {
 
                 <AnimatePresence mode="wait">
                   {!isAnyLoading && telemetryData.length > 0 && (
-                    <motion.div key={`${viewMode}-${selectedMetric}-${JSON.stringify(selectedLaps)}-${JSON.stringify(selectedDrivers)}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-0">
+                    <motion.div key={`${viewMode}-${selectedMetric}-${JSON.stringify(selectedLaps)}-${JSON.stringify(selectedDrivers)}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col min-h-[40vh] lg:min-h-0">
                       {viewMode === 'single' ? (
-                        <TelemetryChart data={telemetryData} metric={selectedMetric} results={results} selectedDrivers={selectedDrivers} height="100%" showXAxis={true} />
+                        <div className="flex-1 flex flex-col min-h-[300px] lg:min-h-0">
+                          <TelemetryChart data={telemetryData} metric={selectedMetric} results={results} selectedDrivers={selectedDrivers} height="100%" showXAxis={true} />
+                        </div>
                       ) : (
-                        <div className="flex-1 flex flex-col min-h-0">
+                        <div className="flex-1 flex flex-col min-h-[800px] lg:min-h-0">
                           {METRICS.map((m, idx) => (
-                            <div key={m} className="flex-1 min-h-0 border-b border-white/5 last:border-0 pt-2">
+                            <div key={m} className="flex-1 min-h-[200px] lg:min-h-0 border-b border-white/5 last:border-0 pt-2">
                               <TelemetryChart data={telemetryData} metric={m} results={results} selectedDrivers={selectedDrivers} height="100%" showXAxis={idx === METRICS.length - 1} />
                             </div>
                           ))}
@@ -879,7 +881,7 @@ export default function App() {
               </div>
             </motion.div>
             ) : (
-              <motion.div key="loading-telemetry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 min-h-[300px] lg:min-h-0 flex items-center justify-center">
+              <motion.div key="loading-telemetry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 min-h-[60vh] lg:min-h-0 flex items-center justify-center">
                 <div className="text-center space-y-4">
                   <div className="inline-block p-4 border border-dark-border rounded-full animate-pulse"><Timer className="w-8 h-8 text-f1-red" /></div>
                   <p className="text-xs font-mono uppercase tracking-[0.3em] opacity-50 max-w-md mx-auto text-center">
