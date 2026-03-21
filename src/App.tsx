@@ -534,8 +534,8 @@ export default function App() {
         quality: 1,
         pixelRatio: 2,
         backgroundColor: '#0a0a0a',
-        width: 1600,
-        height: 900,
+        width: 1920,
+        height: 1080,
         fetchRequestInit: { cache: 'no-cache' } // Hilft bei Cache-Problemen mit html-to-image
       });
 
@@ -904,24 +904,24 @@ export default function App() {
       {/* Hidden Export Container */}
       {isExporting && (
         <div className="fixed left-[-9999px] top-[-9999px]">
-          <div ref={exportRef} style={{ width: '1600px', height: '900px' }} className="bg-dark-bg p-8 flex flex-col relative overflow-hidden">
+          <div ref={exportRef} style={{ width: '1920px', height: '1080px' }} className="bg-dark-bg p-10 flex flex-col relative overflow-hidden">
             <div className="absolute inset-0 carbon-pattern opacity-10 pointer-events-none" />
 
-            <div className="flex justify-between items-start mb-4 relative z-10">
+            <div className="flex justify-between items-start mb-6 relative z-10">
 
-              <div className="flex flex-col gap-4">
-                <img src="/assets/uploads/lap_logo.png" alt="Lap-Check Logo" className="h-8 w-auto object-contain object-left" />
+              <div className="flex flex-col gap-5">
+                <img src="/assets/uploads/lap_logo.png" alt="Lap-Check Logo" crossOrigin="anonymous" className="h-10 w-auto object-contain object-left" />
                 <div>
-                  <h2 className="text-4xl font-black uppercase tracking-tighter leading-none mb-1">
+                  <h2 className="text-5xl font-black uppercase tracking-tighter leading-none mb-1.5">
                     {selectedMeeting?.meeting_name}
                   </h2>
-                  <p className="text-lg font-mono opacity-50 uppercase tracking-widest">
+                  <p className="text-xl font-mono opacity-50 uppercase tracking-widest">
                     {selectedSession?.session_name}
                   </p>
                 </div>
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex gap-5">
                 {selectedDrivers.map((num, idx) => {
                   const d = results.find(drv => drv.DriverNumber === num);
                   const lap = selectedLaps[num];
@@ -933,37 +933,37 @@ export default function App() {
                   return (
                     <div
                       key={`export-driver-${num}`}
-                      className="flex items-stretch gap-3 bg-dark-surface/80 border border-dark-border p-2 rounded-md min-w-[180px] shadow-xl"
+                      className="flex items-stretch gap-4 bg-dark-surface/80 border border-dark-border p-3 rounded-md min-w-[215px] shadow-xl"
                     >
                       <div
-                        className="w-1.5 rounded-full shrink-0"
+                        className="w-2 rounded-full shrink-0"
                         style={{
                           background: isDashed
-                            ? `repeating-linear-gradient(to bottom, #${d?.TeamColor || '888'}, #${d?.TeamColor || '888'} 8px, transparent 8px, transparent 16px)`
+                            ? `repeating-linear-gradient(to bottom, #${d?.TeamColor || '888'}, #${d?.TeamColor || '888'} 10px, transparent 10px, transparent 20px)`
                             : `#${d?.TeamColor || '888'}`
                         }}
                       />
 
-                      <div className="flex flex-col justify-between flex-1 gap-1 min-w-0">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="font-black text-2xl tracking-tighter leading-none">{d?.Abbreviation}</span>
+                      <div className="flex flex-col justify-between flex-1 gap-1.5 min-w-0">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <span className="font-black text-3xl tracking-tighter leading-none">{d?.Abbreviation}</span>
                           </div>
 
                           {lap && (
                             <div className="shrink-0 flex items-center justify-center">
-                              {/* FIX: Das TyreIcon in 'normal' für den riesigen Export Container, da der Header verkleinert wurde */}
-                              <TyreIcon compound={lap.Compound} size="normal" />
+                              {/* Größeres TyreIcon für den 1920x1080 Export */}
+                              <TyreIcon compound={lap.Compound} size="large" />
                             </div>
                           )}
                         </div>
 
                         {lap && (
-                          <div className="flex flex-col mt-1 min-w-0">
-                            <span className="text-xs font-mono opacity-40 uppercase tracking-widest truncate">
+                          <div className="flex flex-col mt-1.5 min-w-0">
+                            <span className="text-sm font-mono opacity-40 uppercase tracking-widest truncate">
                               Lap {lap.LapNumber}
                             </span>
-                            <span className="text-lg font-mono text-f1-red font-bold leading-none mt-1 truncate">
+                            <span className="text-xl font-mono text-f1-red font-bold leading-none mt-1.5 truncate">
                               {formatLapTime(lap.LapTime)}
                             </span>
                           </div>
@@ -975,7 +975,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex-1 border border-dark-border bg-dark-surface/40 rounded-xl relative overflow-hidden p-4 shadow-2xl" style={{ minHeight: 0, minWidth: 0, position: 'relative' }}>
+            <div className="flex-1 border border-dark-border bg-dark-surface/40 rounded-2xl relative overflow-hidden p-5 shadow-2xl" style={{ minHeight: 0, minWidth: 0, position: 'relative' }}>
                <TelemetryChart
                  data={telemetryData}
                  metric={viewMode === 'single' ? selectedMetric : 'speed'}
@@ -986,8 +986,8 @@ export default function App() {
                />
             </div>
 
-            <div className="mt-6 flex justify-end">
-               <span className="text-xs font-mono opacity-30 uppercase tracking-[0.3em]">
+            <div className="mt-8 flex justify-end">
+               <span className="text-sm font-mono opacity-30 uppercase tracking-[0.3em]">
                  Generated by LapCheck // Telemetry: {viewMode === 'single' ? selectedMetric.toUpperCase() : 'SPEED'}
                </span>
             </div>
