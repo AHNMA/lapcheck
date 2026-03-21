@@ -643,10 +643,6 @@ export default function App() {
                     <span>05. Lap Selection</span>
                   </div>
                   <div className="space-y-2">
-                    {selectedDrivers.length === 0 && (
-                      <div className="text-xs text-center opacity-50 font-mono py-2 bg-dark-bg border border-dark-border rounded-sm">Select a driver first</div>
-                    )}
-
                     {/* Render active lap dropdowns */}
                     {selectedDrivers.map((num, idx) => {
                       const d = results.find(drv => drv.DriverNumber === num);
@@ -719,21 +715,38 @@ export default function App() {
                       );
                     })}
 
-                    {/* Render disabled placeholder dropdown for 2nd driver if only 1 is selected */}
-                    {selectedDrivers.length === 1 && (
-                      <div className="bg-dark-bg/50 border border-dark-border/50 p-2 rounded-sm opacity-50 pointer-events-none">
-                        <CustomDropdown
-                          label="LAP FOR DRIVER 2"
-                          icon={<Timer className="w-3 h-3 text-f1-red/50" />}
-                          options={[]}
-                          value={null}
-                          onChange={() => {}}
-                          getLabel={() => ""}
-                          getKey={() => ""}
-                          placeholder="Awaiting Selection"
-                          disabled={true}
-                        />
-                      </div>
+                    {/* Render disabled placeholder dropdowns if fewer than 2 drivers are selected */}
+                    {selectedDrivers.length < 2 && (
+                      <>
+                        {selectedDrivers.length === 0 && (
+                          <div className="bg-dark-bg/50 border border-dark-border/50 p-2 rounded-sm opacity-50 pointer-events-none">
+                            <CustomDropdown
+                              label="LAP FOR DRIVER 1"
+                              icon={<Timer className="w-3 h-3 text-f1-red/50" />}
+                              options={[]}
+                              value={null}
+                              onChange={() => {}}
+                              getLabel={() => ""}
+                              getKey={() => ""}
+                              placeholder="Awaiting Selection"
+                              disabled={true}
+                            />
+                          </div>
+                        )}
+                        <div className="bg-dark-bg/50 border border-dark-border/50 p-2 rounded-sm opacity-50 pointer-events-none">
+                          <CustomDropdown
+                            label="LAP FOR DRIVER 2"
+                            icon={<Timer className="w-3 h-3 text-f1-red/50" />}
+                            options={[]}
+                            value={null}
+                            onChange={() => {}}
+                            getLabel={() => ""}
+                            getKey={() => ""}
+                            placeholder="Awaiting Selection"
+                            disabled={true}
+                          />
+                        </div>
+                      </>
                     )}
                   </div>
                 </motion.section>
