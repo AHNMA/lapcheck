@@ -591,9 +591,8 @@ export default function App() {
       </AnimatePresence>
 
       {/* Mobile Header */}
-      <header className="lg:hidden flex items-center justify-between p-4 border-b border-dark-border bg-dark-bg carbon-pattern relative z-20">
+      <header className="lg:hidden flex items-center justify-center p-4 border-b border-dark-border bg-dark-bg carbon-pattern relative z-20">
         <img src="/assets/uploads/lap_logo.png" alt="Lap-Check Logo" className="h-10 w-auto" />
-        {isAnyLoading && <Loader2 className="w-5 h-5 animate-spin text-f1-red" />}
       </header>
 
       <main className="flex flex-col-reverse lg:grid lg:grid-cols-[380px_1fr] flex-1 lg:overflow-hidden">
