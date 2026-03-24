@@ -1,4 +1,4 @@
-import { f1Service, TelemetryPoint, F1Result, Lap } from '../services/f1Service';
+import { f1Service, TelemetryPoint, F1Result, Lap } from '../services/f1Service.js';
 
 export interface WorkerInput {
   year: number;
@@ -31,32 +31,50 @@ self.onmessage = async (e: MessageEvent<WorkerInput>) => {
 
     // 2. Berechnung und Interpolation
     const merged: any[] = [];
-    const distanceSet = new Set<number>();
+    const percentageSet = new Set<number>();
 
-    // Sammeln aller exakten Distanzpunkte, auf 2 Nachkommastellen gerundet zur Deduplizierung
+    // Vorab-Schleife: Ermitteln der min/max Distanz pro Fahrer und Zuweisen der relativen Prozentwerte
     resultsData.forEach(res => {
-      res.telemetry.forEach(t => {
+      const telemetry = res.telemetry as any[]; // Type assertion for dynamic percentage assignment
+      if (!res.driver || telemetry.length < 2) return;
+
+      const minDist = telemetry[0].distance;
+      const maxDist = telemetry[telemetry.length - 1].distance;
+
+      // Division durch 0 (oder fast 0) verhindern
+      if (typeof minDist !== 'number' || typeof maxDist !== 'number' || (maxDist - minDist) <= 0) {
+        // Ignoriere diesen Fahrer (wird bei hasData sowieso aussortiert)
+        return;
+      }
+
+      telemetry.forEach(t => {
         if (typeof t.distance === 'number') {
-          distanceSet.add(Math.round(t.distance * 100) / 100);
+          t.percentage = ((t.distance - minDist) / (maxDist - minDist)) * 100;
+          // Sammeln aller exakten Prozentpunkte, auf 3 Nachkommastellen gerundet zur Deduplizierung
+          percentageSet.add(Math.round(t.percentage * 1000) / 1000);
         }
       });
     });
 
-    const sortedDistances = Array.from(distanceSet).sort((a, b) => a - b);
+    const sortedPercentages = Array.from(percentageSet).sort((a, b) => a - b);
     const indices = new Array(resultsData.length).fill(0);
 
-    sortedDistances.forEach(dist => {
-      const mergedPoint: any = { distance: dist };
+    sortedPercentages.forEach(targetPercent => {
+      // Das Basis-Objekt muss zwingend mit const mergedPoint = { distance: ... } initialisiert werden
+      // Der Wert dahinter ist künftig aber die Prozentzahl.
+      const mergedPoint: any = { distance: targetPercent };
       let hasData = false;
 
       resultsData.forEach((res, idx) => {
-        if (!res.driver || res.telemetry.length < 2) return;
-        const telemetry = res.telemetry;
-        if (dist < telemetry[0].distance || dist > telemetry[telemetry.length - 1].distance) return;
+        const telemetry = res.telemetry as any[]; // Type assertion for percentage
+        if (!res.driver || telemetry.length < 2 || telemetry[0].percentage === undefined) return;
+
+        // Prüfen ob wir innerhalb der gültigen Runden-Range des Fahrers sind (in Prozent)
+        if (targetPercent < telemetry[0].percentage || targetPercent > telemetry[telemetry.length - 1].percentage) return;
 
         let i = indices[idx];
-        // Die Schleife darf erst stoppen, wenn die Distanz des nächsten Punktes strikt größer als die Zieldistanz ist
-        while (i < telemetry.length - 1 && telemetry[i + 1].distance <= dist) {
+        // Die Schleife darf erst stoppen, wenn die Prozentzahl des nächsten Punktes strikt größer als das Ziel ist
+        while (i < telemetry.length - 1 && telemetry[i + 1].percentage <= targetPercent) {
           i++;
         }
 
@@ -73,10 +91,15 @@ self.onmessage = async (e: MessageEvent<WorkerInput>) => {
 
         const d1 = p1.distance || 0;
         const d2 = p2.distance || 0;
+
+        // WICHTIG: Die 200-Meter-Regel (Verbindungsabbruch) darf NICHT auf Prozente umgestellt werden!
         if (d2 - d1 > 200) return;
 
-        // Schutz vor Division durch Null
-        const ratio = d2 > d1 ? (dist - d1) / (d2 - d1) : 0;
+        const pct1 = p1.percentage;
+        const pct2 = p2.percentage;
+
+        // Schutz vor Division durch Null, Berechnung der Ratio basierend auf Prozentwerten
+        const ratio = pct2 > pct1 ? (targetPercent - pct1) / (pct2 - pct1) : 0;
 
         metrics.forEach(metric => {
           let val1 = Number(p1[metric as keyof TelemetryPoint] || 0);
