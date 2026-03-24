@@ -355,7 +355,10 @@ const TelemetryChart = React.memo(function TelemetryChart({
     grid: { top: 40, right: 20, bottom: showXAxis ? 30 : 10, left: 75, containLabel: false },
     tooltip: {
       trigger: 'axis',
-      axisPointer: { type: 'cross', crossStyle: { color: '#FF1E1E' } },
+      axisPointer: { type: 'cross', crossStyle: { color: '#FF1E1E' }, label: { formatter: (params: any) => {
+        if (params.axisDimension === 'x') return `${Number(params.value).toFixed(1)}%`;
+        return Number(params.value).toFixed(1);
+      } } },
       backgroundColor: '#151619',
       borderColor: '#2D2E33',
       textStyle: { color: '#fff', fontFamily: 'monospace', fontSize: 10 },
@@ -377,9 +380,14 @@ const TelemetryChart = React.memo(function TelemetryChart({
     dataZoom: [{ type: 'inside', xAxisIndex: 0, zoomOnMouseWheel: true, moveOnMouseMove: true }],
     xAxis: {
       type: 'value', min: 'dataMin', max: 'dataMax', show: showXAxis,
-      axisLabel: { color: '#666', fontFamily: 'monospace', fontSize: 9 },
+      axisLabel: {
+        color: '#666',
+        fontFamily: 'monospace',
+        fontSize: 9,
+        formatter: (value: number) => `${value.toFixed(0)}%`
+      },
       splitLine: { show: false }, axisLine: { show: false }, axisTick: { show: false },
-      name: showXAxis ? 'Distance (m)' : '', nameLocation: 'middle', nameGap: 20,
+      name: showXAxis ? 'Distance (%)' : '', nameLocation: 'middle', nameGap: 20,
       nameTextStyle: { color: '#444', fontFamily: 'monospace', fontSize: 9 }
     },
     yAxis: {
