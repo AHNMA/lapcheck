@@ -450,8 +450,13 @@ export default function App() {
     queryKey: ['meetings', year],
     queryFn: async () => {
       const data = await f1Service.getMeetings(year);
-      const now = new Date();
-      const pastMeetings = data.filter(m => new Date(m.event_date.replace(' ', 'T')) <= now);
+
+      // FIX: Das 'event_date' der API ist immer der Sonntag des Rennens.
+      // Wir geben +3 Tage Toleranz, damit das Event schon ab Donnerstag/Freitag im Dropdown sichtbar wird.
+      const displayThreshold = new Date();
+      displayThreshold.setDate(displayThreshold.getDate() + 3);
+
+      const pastMeetings = data.filter(m => new Date(m.event_date.replace(' ', 'T')) <= displayThreshold);
       return pastMeetings.sort((a, b) => a.round - b.round);
     }
   });
