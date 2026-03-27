@@ -460,38 +460,30 @@ export default function App() {
   const { data: sessions = [], isLoading: loadingSessions, error: errorSessions } = useQuery({
     queryKey: ['sessions', year, selectedMeeting?.meeting_name],
     queryFn: async () => {
-      const data = await f1Service.getSessions(year, selectedMeeting!.meeting_name);
+      // 1. Hole alle deklarierten Sessions für das Event
+      const allSessions = await f1Service.getSessions(year, selectedMeeting!.meeting_name);
       const now = new Date();
 
-      const pastSessions = data.filter(s => {
-        if (!s.session_date || s.session_date === 'None' || s.session_date === 'NaT') return false;
+      try {
+        // 2. Hole das Manifest vom Server
+        const statusRes = await fetch(`https://api.letthemrace.net/status/${year}/${encodeURIComponent(selectedMeeting!.meeting_name)}`);
 
-        const sessionStartTime = new Date(s.session_date.replace(' ', 'T'));
-        const name = s.session_name.toLowerCase();
+        if (!statusRes.ok) throw new Error("Status API nicht erreichbar");
 
-        // Dynamische Wartezeiten: Dauer der Session + Puffer in Minuten
-        let delayMinutes = 140; // Fallback-Sicherheit
+        const statusData = await statusRes.json();
+        const readySessions: string[] = (statusData.ready_sessions || []).map((s: string) => s.toLowerCase());
 
-        if (name.includes('practice')) {
-          delayMinutes = 65; // FP1, FP2, FP3: 60min + 5min Puffer
-        } else if (name.includes('shootout') || name.includes('sprint qualifying')) {
-          delayMinutes = 50; // Sprint-Quali: 40min + 10min Puffer
-        } else if (name.includes('qualifying')) {
-          delayMinutes = 60; // Qualifying: 50min + 10min Puffer
-        } else if (name.includes('sprint')) {
-          delayMinutes = 55; // Sprint-Rennen: 45min + 10min Puffer
-        } else if (name.includes('race')) {
-          delayMinutes = 140; // Rennen: 120min + 20min Puffer
-        }
+        // 3. Filtere: Session muss im Manifest stehen
+        return allSessions.filter(s => readySessions.includes(s.session_name.toLowerCase()));
 
-        // Addiere die berechneten Minuten auf die exakte Startzeit der Session
-        const dataAvailableTime = new Date(sessionStartTime.getTime() + delayMinutes * 60000);
-
-        // Die Session wird angezeigt, sobald der aktuelle Zeitpunkt die 'dataAvailableTime' erreicht hat
-        return now >= dataAvailableTime;
-      });
-
-      return pastSessions;
+      } catch (err) {
+        console.warn("Manifest-Check fehlgeschlagen, nutze Zeit-Fallback:", err);
+        // FALLBACK: Zeige alle Sessions an, deren Startzeit vergangen ist
+        return allSessions.filter(s => {
+          if (!s.session_date || s.session_date === 'None' || s.session_date === 'NaT') return false;
+          return new Date(s.session_date.replace(' ', 'T')) <= now;
+        });
+      }
     },
     enabled: !!selectedMeeting
   });
