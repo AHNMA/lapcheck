@@ -440,10 +440,6 @@ export default function App() {
 
   const [modalContent, setModalContent] = useState<'legal' | 'privacy' | null>(null);
 
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
-  const [passwordError, setPasswordError] = useState(false);
-
   // --- REACT QUERY DATA FETCHING ---
 
   const { data: meetings = [], isLoading: loadingMeetings, error: errorMeetings } = useQuery({
@@ -664,16 +660,6 @@ export default function App() {
   }, [isAnyLoading]);
 
   // FIX: Erweitertes Error-Logging und robusterer Export
-  const handlePasswordSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passwordInput === 'lcbeta26') {
-      setIsAuthenticated(true);
-      setPasswordError(false);
-    } else {
-      setPasswordError(true);
-    }
-  };
-
   const handleExportImage = async () => {
     if (!selectedSession) return;
     setIsExporting(true);
@@ -707,59 +693,6 @@ export default function App() {
 
   return (
     <div className="min-h-[100svh] lg:h-screen lg:w-screen bg-dark-bg text-white font-sans selection:bg-f1-red selection:text-white lg:overflow-hidden flex flex-col relative">
-      <AnimatePresence>
-        {!isAuthenticated && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              className="bg-dark-surface border border-dark-border rounded-xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center"
-            >
-              <div className="flex items-start gap-2 mb-8">
-                <img src="/assets/uploads/lap_logo.png" alt="Lap-Check Logo" className="h-8 sm:h-12 w-auto object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                <span className="bg-f1-red text-white text-[9px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-sm leading-none mt-1">Beta</span>
-              </div>
-
-              <form onSubmit={handlePasswordSubmit} className="w-full space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-white/50 block text-center">
-                    Enter Password
-                  </label>
-                  <input
-                    type="password"
-                    value={passwordInput}
-                    onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(false); }}
-                    className={cn(
-                      "w-full bg-dark-bg border px-4 py-3 text-center text-lg font-mono rounded-sm transition-colors focus:outline-none focus:ring-1 focus:ring-f1-red",
-                      passwordError ? "border-f1-red text-f1-red" : "border-dark-border focus:border-f1-red"
-                    )}
-                    placeholder="••••••••"
-                    autoFocus
-                  />
-                  {passwordError && (
-                    <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-f1-red text-xs font-mono text-center">
-                      Incorrect password. Please try again.
-                    </motion.p>
-                  )}
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full bg-f1-red hover:bg-f1-red/90 text-white font-bold uppercase tracking-widest text-sm py-3 rounded-sm transition-colors flex items-center justify-center gap-2 group"
-                >
-                  Unlock Access
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {(!meetings.length && loadingMeetings) && (
