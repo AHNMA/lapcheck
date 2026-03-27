@@ -467,10 +467,32 @@ export default function App() {
       const data = await f1Service.getSessions(year, selectedMeeting!.meeting_name);
       const now = new Date();
 
-      // Behalte alle Sessions, die bereits abgehalten wurden (Safari-kompatibles Date-Parsing)
       const pastSessions = data.filter(s => {
         if (!s.session_date || s.session_date === 'None' || s.session_date === 'NaT') return false;
-        return new Date(s.session_date.replace(' ', 'T')) <= now;
+
+        const sessionStartTime = new Date(s.session_date.replace(' ', 'T'));
+        const name = s.session_name.toLowerCase();
+
+        // Dynamische Wartezeiten: Dauer der Session + Puffer in Minuten
+        let delayMinutes = 140; // Fallback-Sicherheit
+
+        if (name.includes('practice')) {
+          delayMinutes = 65; // FP1, FP2, FP3: 60min + 5min Puffer
+        } else if (name.includes('shootout') || name.includes('sprint qualifying')) {
+          delayMinutes = 50; // Sprint-Quali: 40min + 10min Puffer
+        } else if (name.includes('qualifying')) {
+          delayMinutes = 60; // Qualifying: 50min + 10min Puffer
+        } else if (name.includes('sprint')) {
+          delayMinutes = 55; // Sprint-Rennen: 45min + 10min Puffer
+        } else if (name.includes('race')) {
+          delayMinutes = 140; // Rennen: 120min + 20min Puffer
+        }
+
+        // Addiere die berechneten Minuten auf die exakte Startzeit der Session
+        const dataAvailableTime = new Date(sessionStartTime.getTime() + delayMinutes * 60000);
+
+        // Die Session wird angezeigt, sobald der aktuelle Zeitpunkt die 'dataAvailableTime' erreicht hat
+        return now >= dataAvailableTime;
       });
 
       return pastSessions;
