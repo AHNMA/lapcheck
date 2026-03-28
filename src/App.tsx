@@ -477,12 +477,9 @@ export default function App() {
         return allSessions.filter(s => readySessions.includes(s.session_name.toLowerCase()));
 
       } catch (err) {
-        console.warn("Manifest-Check fehlgeschlagen, nutze Zeit-Fallback:", err);
-        // FALLBACK: Zeige alle Sessions an, deren Startzeit vergangen ist
-        return allSessions.filter(s => {
-          if (!s.session_date || s.session_date === 'None' || s.session_date === 'NaT') return false;
-          return new Date(s.session_date.replace(' ', 'T')) <= now;
-        });
+        console.error("Manifest-Check fehlgeschlagen:", err);
+        // STRIKTER MODUS: Keine API-Bestätigung = Keine Anzeige im Dropdown
+        return [];
       }
     },
     enabled: !!selectedMeeting
